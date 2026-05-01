@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JH Strength">
+<meta name="theme-color" content="#c0392b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>JH Rugby Strength Coach</title>
+<!-- ============================================================
+     JH RUGBY STRENGTH COACH — PWA
+     Version: 1.0.0 | Built: 2026-05-01
+     
+     EDITING GUIDE:
+     - PRESET_WORKOUTS: The 6 scraped Joel Harries workouts
+     - BLK_VARS: Exercise variations per block (4 sets cycling)
+     - GOALS: Block goal schemes (sets/reps/loading per goal)
+     - BLK_MAP: Block label to index mapping
+     - CSS section: All styling
+     - HTML section: App shell + modals
+     - JS section: All functions
+     ============================================================ -->
+<style>
+/* ============================================================
+   CSS — MOBILE-FIRST, iPhone optimised
+   ============================================================ */
+:root{
+  --red:#c0392b;--dark:#1a1a2e;--card:#fff;--bg:#f0f0f0;
+  --text:#1a1a1a;--muted:#666;--border:#e0e0e0;
+  --green:#27ae60;--blue:#4361ee;--orange:#f4a261;
+  --radius:12px;--tap:48px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#c0392b,#8e1010);color:#fff;padding:12px 16px;padding-top:calc(12px + var(--safe-top));display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.3);flex-shrink:0;}
+.logo{width:38px;height:38px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#c0392b;font-size:1rem;flex-shrink:0}
+header h1{font-size:1.1rem;letter-spacing:.5px;line-height:1.2}
+.subtitle{font-size:.7rem;opacity:.75;margin-top:1px}
+
+/* NAV */
+nav{background:var(--dark);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:0;border-bottom:1px solid #000;}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:none;color:#aaa;padding:0 14px;height:44px;cursor:pointer;font-size:.78rem;white-space:nowrap;border-bottom:3px solid transparent;flex-shrink:0;-webkit-font-smoothing:antialiased;}
+nav button:active{background:rgba(255,255,255,.1)}
+nav button.active{color:#e74c3c;border-bottom-color:#e74c3c;font-weight:700}
+.nav-actions{display:flex;gap:4px;margin-left:auto;padding:0 8px;align-items:center;flex-shrink:0;}
+.nav-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:0 12px;height:34px;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+.nav-btn:active{background:rgba(255,255,255,.2)}
+
+/* SCROLL AREA */
+#app{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px calc(16px + var(--safe-bot));overscroll-behavior:contain;}
+
+/* WORKOUT CARD */
+.wcard{background:var(--card);border-radius:var(--radius);box-shadow:0 1px 6px rgba(0,0,0,.1);overflow:hidden;margin-bottom:0}
+.wcard-head{padding:14px 16px 10px}
+.wcard-head h2{font-size:1.05rem;font-weight:800;line-height:1.3;color:var(--text)}
+.wmeta{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}
+.wtype{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:10px}
+.wtype.strength{background:#fef3cd;color:#856404}
+.wtype.power{background:#fde8e8;color:#9b2335}
+.wtype.speed{background:#d4f8e8;color:#1a6e44}
+.wtype.rest{background:#e8e8f8;color:#444}
+.wtype.game{background:#f0e6ff;color:#5b2d8e}
+.wtype.recovery{background:#e6f4ff;color:#1a4d7a}
+.wmeta-date{font-size:.75rem;color:var(--muted)}
+.wcard-actions{display:flex;gap:8px;margin-top:8px}
+.btn-edit,.btn-del{padding:6px 14px;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer;border:none}
+.btn-edit{background:#f0f0f0;color:#333}
+.btn-del{background:#fde8e8;color:#c0392b}
+.btn-edit:active,.btn-del:active{opacity:.7}
+
+/* PROGRESS */
+.prog-wrap{padding:0 16px 12px;border-bottom:1px solid var(--border)}
+.prog-txt{font-size:.72rem;color:var(--muted);text-align:right;margin-bottom:4px}
+.prog-bar{height:5px;background:#e8e8e8;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width .4s ease}
+
+/* SECTION */
+.sec{border-bottom:1px solid #f0f0f0}
+.sec-head{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;-webkit-user-select:none;user-select:none;}
+.sec-head:active{background:#f8f8f8}
+.sec-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;color:#fff;flex-shrink:0;background:var(--red);}
+.sec-name{flex:1;font-weight:700;font-size:.88rem;line-height:1.3}
+.sec-chevron{font-size:.75rem;color:#aaa;transition:transform .25s;flex-shrink:0}
+.sec-chevron.open{transform:rotate(180deg)}
+.sec-body{padding:0 16px 14px;display:none}
+.sec-body.open{display:block}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chip{font-size:.72rem;padding:4px 10px;border-radius:12px;font-weight:600}
+.chip.reps{background:#e8f0fe;color:#1a56db}
+.chip.load{background:#fff3cd;color:#856404}
+.chip.tempo{background:#e8faf0;color:#1a6e44}
+.chip.rest{background:#fde8e8;color:#9b2335}
+
+/* NOTES */
+.cnote{border-left:3px solid #e8e8e8;padding:6px 10px;font-size:.8rem;color:#555;font-style:italic;margin:6px 0;line-height:1.5}
+.coach-note{border-left:3px solid #a8d8a8;background:#f0faf0;padding:6px 10px;border-radius:0 6px 6px 0;font-size:.78rem;color:#2d6a2d;font-style:italic;margin:6px 0}
+
+/* CIRCUIT */
+.circ-list{list-style:none;margin:8px 0}
+.circ-list li{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem;border-bottom:1px solid #f5f5f5}
+.circ-num{width:22px;height:22px;background:var(--red);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0}
+
+/* SUPERSET */
+.ss-label{font-size:.68rem;font-weight:700;color:var(--red);letter-spacing:.5px;padding:8px 0 4px;text-transform:uppercase}
+.ss-ex{background:#f8f8f8;border-radius:8px;padding:10px 12px;margin:6px 0}
+.ss-ex-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ss-badge{width:22px;height:22px;border-radius:6px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0}
+.ss-name{font-weight:700;font-size:.82rem;flex:1;line-height:1.3}
+
+/* REST TIMER */
+.timer-box{background:var(--dark);border-radius:10px;padding:14px;text-align:center;margin:10px 0}
+.timer-display{font-size:2rem;font-weight:800;color:#e74c3c;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.timer-label{font-size:.65rem;color:#888;letter-spacing:1px;margin-top:2px;text-transform:uppercase}
+.timer-btns{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.tbtn{padding:0;height:40px;width:120px;border:none;border-radius:20px;font-size:.8rem;font-weight:700;cursor:pointer}
+.tbtn.start{background:#e74c3c;color:#fff}
+.tbtn.reset{background:#333;color:#ccc}
+.tbtn:active{opacity:.7}
+
+/* MARK DONE */
+.mark-btn{width:100%;height:var(--tap);border:none;border-radius:10px;background:var(--red);color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;margin-top:10px;letter-spacing:.3px;}
+.mark-btn.done{background:var(--green)}
+.mark-btn:active{opacity:.85}
+
+/* LOG SECTION */
+.log-section{margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:12px;}
+.log-title{font-size:.72rem;font-weight:700;color:#888;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.log-sets{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.log-set-row{display:flex;align-items:center;gap:6px}
+.log-set-num{font-size:.72rem;color:#888;width:38px;flex-shrink:0;font-weight:600}
+.log-input{flex:1;height:38px;border:1.5px solid #e0e0e0;border-radius:8px;padding:0 10px;font-size:.85rem;background:#fafafa;-webkit-appearance:none;appearance:none;}
+.log-input:focus{outline:none;border-color:#4361ee;background:#fff}
+.log-x{display:flex;align-items:center;padding:0 4px;color:#888;font-size:.75rem}
+.log-comment{width:100%;min-height:60px;border:1.5px solid #e0e0e0;border-radius:8px;padding:8px 10px;font-size:.82rem;font-family:inherit;background:#fafafa;resize:none;line-height:1.4;-webkit-appearance:none;}
+.log-comment:focus{outline:none;border-color:#4361ee;background:#fff}
+.log-save-btn{width:100%;height:42px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;margin-top:8px;letter-spacing:.3px;}
+.log-save-btn:active{background:#333}
+.log-saved-badge{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;color:var(--green);font-weight:600;margin-top:6px;opacity:0;transition:opacity .3s;}
+.log-saved-badge.show{opacity:1}
+
+/* HISTORY */
+.log-hist{margin-top:10px}
+.log-hist-title{font-size:.68rem;color:#888;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.log-hist-entry{background:#f5f5f5;border-radius:8px;padding:8px 10px;margin-bottom:5px;font-size:.75rem;color:#444;}
+.log-hist-date{font-weight:700;color:#333;margin-bottom:2px}
+.log-hist-sets{color:#555;line-height:1.6}
+.log-hist-comment{font-style:italic;color:#777;margin-top:3px;border-top:1px solid #e8e8e8;padding-top:3px}
+
+/* MODAL — Bottom sheet style */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:flex-end;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.modal.open{display:flex}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:92vh;padding:0 0 calc(20px + var(--safe-bot));overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.modal-handle{width:36px;height:4px;background:#ddd;border-radius:2px;margin:12px auto 0}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #f0f0f0;position:sticky;top:0;background:#fff;z-index:1;}
+.modal-head h2{font-size:1rem;font-weight:800;color:var(--text)}
+.modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:#888;padding:4px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.modal-close:active{background:#f0f0f0}
+.modal-body{padding:16px 18px}
+.form-group{margin-bottom:14px}
+.form-label{font-size:.75rem;font-weight:700;color:#555;margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.3px}
+.form-input,.form-select{width:100%;height:44px;border:1.5px solid #e0e0e0;border-radius:10px;padding:0 12px;font-size:.9rem;background:#fafafa;-webkit-appearance:none;appearance:none;}
+.form-input:focus,.form-select:focus{outline:none;border-color:#4361ee}
+.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M6 8L0 0h12z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.form-hint{font-size:.7rem;color:#999;margin-top:3px}
+.modal-preview{background:#111;border-radius:10px;margin-bottom:12px;padding:14px;color:#fff}
+.modal-footer{padding:0 18px;margin-top:8px}
+.modal-btn{width:100%;height:50px;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;letter-spacing:.3px;}
+.modal-btn.primary{background:var(--red);color:#fff}
+.modal-btn.primary:active{background:#a93226}
+
+/* FORM BUILDER */
+.blk-card{background:#f8f8f8;border-radius:10px;padding:12px;margin-bottom:10px}
+.blk-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.blk-num{width:24px;height:24px;background:var(--red);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0}
+.blk-type{flex:1;font-size:.8rem;font-weight:700;color:#333}
+.blk-rm{background:none;border:none;color:#c0392b;font-size:.8rem;cursor:pointer;padding:4px;font-weight:600}
+.add-blk-btn{width:100%;height:40px;background:none;border:2px dashed #ccc;border-radius:8px;font-size:.8rem;color:#888;cursor:pointer;margin-top:6px}
+.add-blk-btn:active{background:#f0f0f0}
+.type-tabs{display:flex;gap:4px;margin-bottom:10px}
+.type-tab{flex:1;height:36px;border:2px solid #e0e0e0;border-radius:8px;background:#fff;font-size:.72rem;font-weight:600;cursor:pointer;color:#666}
+.type-tab.active{border-color:var(--red);color:var(--red);background:#fde8e8}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 20px;color:#aaa}
+.empty-icon{font-size:2.5rem;margin-bottom:12px}
+.empty p{font-size:.85rem;line-height:1.6}
+
+/* TOAST */
+#toast{position:fixed;top:calc(60px + var(--safe-top));left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:10px 20px;border-radius:24px;font-size:.82rem;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;max-width:90vw;}
+#toast.show{opacity:1}
+
+/* AUTO-PROG NOTE */
+.ap-note{background:#fffbea;border:1px solid #f0d060;border-radius:10px;padding:12px 14px;margin-top:14px;font-size:.78rem;color:#7a6000;line-height:1.6}
+.ap-note strong{display:block;margin-bottom:3px;color:#5a4400}
+
+/* WEEK TYPE BUTTONS */
+.week-type-btn{flex:1;height:44px;border-radius:10px;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">JH</div>
+  <div>
+    <h1>STRENGTH SOLUTION</h1>
+    <div class="subtitle">Joel Harries Rugby Performance Coach</div>
+  </div>
+</header>
+<nav id="nav"></nav>
+<div id="app"></div>
+
+<!-- AUTO-GENERATE MODAL -->
+<div class="modal" id="agMod">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2>🤖 Auto-Generate Week</h2>
+      <button class="modal-close" onclick="document.getElementById('agMod').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Block Number</label>
+        <select class="form-select" id="agBlock"></select>
+      </div>
+      <div class="form-group" id="agGoalGroup">
+        <label class="form-label">Block Goal</label>
+        <select class="form-select" id="agGoal"></select>
+        <div class="form-hint" id="agGoalHint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Week</label>
+        <select class="form-select" id="agWeek">
+          <option value="1">Week 1 — Introduction</option>
+          <option value="2">Week 2 — Build</option>
+          <option value="3">Week 3 — Accumulate</option>
+          <option value="4">Week 4 — Peak</option>
+        </select>
+        <div class="form-hint">Controls loading intensity — sets/reps stay fixed per goal</div>
+      </div>
+      <div class="form-group" id="agGameGroup">
+        <label class="form-label">Week Type</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button id="btnGameWeek" class="week-type-btn" onclick="setGameWeek(true)"
+            style="border:2px solid #7b2d8b;background:#7b2d8b;color:#fff;">🏉 Game Week</button>
+          <button id="btnNoGame" class="week-type-btn" onclick="setGameWeek(false)"
+            style="border:2px solid #e0e0e0;background:#f5f5f5;color:#555;">🏋️ No Game</button>
+        </div>
+        <div class="form-hint" id="agGameHint">Fri = Impulse Power · Sat = Game Day logging</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Start Date (Monday)</label>
+        <input type="date" class="form-input" id="agDate">
+        <div class="form-hint">Week runs Mon–Sun from this date</div>
+      </div>
+      <div id="agPreview" class="modal-preview" style="min-height:60px;"></div>
+      <div class="ap-note">
+        <strong>📈 Auto-Progression Logic</strong>
+        Exercises stay fixed across all 4 weeks of a block. Sets/reps are determined by your goal. Loading progresses each week. Exercise variations advance each new block.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn primary" onclick="generateWeek()">⚡ Generate Full Week</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL CREATE MODAL -->
+<div class="modal" id="manMod">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 id="manTit">➕ Create Workout</h2>
+      <button class="modal-close" onclick="document.getElementById('manMod').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Workout Name</label>
+        <input type="text" class="form-input" id="wN" placeholder="e.g. Upper Body Push">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Day / Date</label>
+        <input type="text" class="form-input" id="wD" placeholder="e.g. Monday, 12 May">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <div class="type-tabs" id="tsel">
+          <button class="type-tab active" onclick="setType('strength',this)">Strength</button>
+          <button class="type-tab" onclick="setType('power',this)">Power</button>
+          <button class="type-tab" onclick="setType('speed',this)">Speed</button>
+          <button class="type-tab" onclick="setType('rest',this)">Rest</button>
+        </div>
+      </div>
+      <div id="blkCon"></div>
+      <button class="add-blk-btn" onclick="addBlk()">+ Add Exercise Block</button>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn primary" onclick="saveW()" style="margin-top:8px">💾 Save Workout</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+/* ============================================================
+   SERVICE WORKER REGISTRATION
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW reg failed:', e));
+  });
+}
+</script>
+
+<script>
+
+/* ============================================================
+   DATA SECTION — Edit exercises, goals and progressions here
+   ============================================================ */
+
+/* ---------- PRESET WORKOUTS (scraped from Joel Harries TrueCoach) ---------- */
+/* To edit: find the workout by id, update sections array */
+const PRESET_WORKOUTS = [{"id":"upper","day":"Wednesday","date":"Apr 29","title":"Competition 1.4: Upper Strength & Power","type":"strength","custom":false,"sections":[{"label":"A","name":"Movement Prep","reps":"3 Rounds","circuit":["DB Decline Ext Rot — 6 Reps","Y-Raise Incline — 8 Reps","Arm Bar KB — 4 Reps"],"desc":"Shoulder & thoracic mobility prep. Full range on every rep."},{"label":"B","name":"Behind the Neck Push Press","reps":"4 x 2","load":"1-2 RIR","tempo":"X-0-X-0","rest":"120s","desc":"Barbell on upper back, wide pronated grip. Quarter-squat dip then explosively press overhead. Lower under full control."},{"label":"C","name":"C1/C2 Superset","superset":true,"exercises":[{"label":"C1","name":"Inertia Bench Press — Mid Range BB","reps":"5, 3, 2","load":"See progression","tempo":"2-0-1-0","rest":"180s","desc":"W1: 100/107/112kg | W3: 112/120/125kg | W4: Switch to Power — Building each set."},{"label":"C2","name":"Chin-Up — Supinated — Hollow Body","reps":"5, 3, 2","load":"Match bench %","tempo":"2-0-1-0","rest":"180s","desc":"Dead hang start. Drive elbows to hips. Chin over bar. Hollow body throughout."}]},{"label":"D","name":"D1/D2 Superset","superset":true,"exercises":[{"label":"D1","name":"Seated Close Grip Press","reps":"3 x 8","load":"3-4 RIR","tempo":"2-0-1-0","rest":"90s","desc":"Seated DB or cable press. Control eccentric, press explosively."},{"label":"D2","name":"Seated Row — Mid Grip — Neutral","reps":"3 x 8","load":"3-4 RIR","tempo":"2-0-1-1","rest":"90s","desc":"Retract scapula first, then pull. 1s hold. Keep torso still."}]}]},{"id":"impulse-lower","day":"Tuesday","date":"Apr 28","title":"Competition 1.4: Impulse (Lower)","type":"strength","custom":false,"sections":[{"label":"A","name":"Box Squat Warm-Up","reps":"3 x 3","load":"100kg","tempo":"X-0-X-0","rest":"90s","note":"WU sets — intent to move FAST","desc":"Warm-up sets with focus on explosive intent."},{"label":"B","name":"B1/B2 Superset","superset":true,"exercises":[{"label":"B1","name":"Box Squat — Working Sets","reps":"5, 3, 2","load":"RPE 8","tempo":"2-2-X-0","rest":"180s","note":"Keep the Progression Going","desc":"2s descent, 2s pause on box, explosive concentric."},{"label":"B2","name":"Half Kneeling Cable Chop","reps":"3 x 8","load":"RPE 8","tempo":"2-0-X-0","rest":"180s","desc":"Kneeling on trail leg. Chop diagonally. Anti-rotation core."}]},{"label":"C","name":"C1/C2 Superset","superset":true,"exercises":[{"label":"C1","name":"Reverse Lunge for Glutes","reps":"3 x 6/6","load":"2-3 RIR","tempo":"2-0-X-0","rest":"120s","desc":"Step back, trail knee near floor. Drive through front heel."},{"label":"C2","name":"Glider — Hamstring Curl","reps":"3 x 6/6","load":"2-3 RIR","tempo":"3-0-1-0","rest":"120s","desc":"Heels on sliders, hips up, curl heels to hips."}]},{"label":"D","name":"D1/D2 Superset","superset":true,"exercises":[{"label":"D1","name":"Single Leg Calf Raise Iso — DB","reps":"3 x 6","load":"2-3 RIR","tempo":"2-2-X-1","rest":"90s","desc":"Full ROM. 2s up, 2s hold at top."},{"label":"D2","name":"Incline Garhammer Raise","reps":"3 x 8","load":"BW","tempo":"2-0-1-0","rest":"90s","desc":"Incline bench. Curl knees to chest, raise hips."}]}]},{"id":"impulse-power","day":"Friday","date":"Apr 24","title":"Competition 1.4: Impulse (Power)","type":"power","custom":false,"sections":[{"label":"A","name":"Depth Jump","reps":"4 x 3","load":"Bodyweight","tempo":"X-0-X-0","rest":"120s","note":"Minimal ground contact time","desc":"Step off box, land and immediately jump. Reactive strength."},{"label":"B","name":"Dip Clean","reps":"6 x 1","load":"80-90kg","tempo":"X-0-X-0","rest":"90s","note":"Dip Clean — quality over weight","desc":"Dip-and-drive to initiate. Explosive rebend. Receive in quarter-squat."},{"label":"C","name":"Trap Bar Jump","reps":"5, 3, 2","load":"Moderate-heavy","tempo":"2-0-X-0","rest":"180s","desc":"Deadlift then drive all the way into a jump. Land soft."},{"label":"D","name":"D1/D2 Superset","superset":true,"exercises":[{"label":"D1","name":"Close Grip Bench Press","reps":"5, 3, 2, 2","load":"1-2 RIR","tempo":"2-0-1-0","rest":"150s","desc":"Grip 1.5x shoulder width. Elbows tuck. Full ROM."},{"label":"D2","name":"Pendlay Row","reps":"5, 3, 2, 2","load":"1-2 RIR","tempo":"1-0-X-1","rest":"150s","desc":"Bar rests on floor each rep. Explosive pull to lower chest."}]}]},{"id":"athlete","day":"Thursday","date":"Apr 23","title":"Competition 1.4 — Athlete Day","type":"speed","custom":false,"sections":[{"label":"A","name":"Pre-Hab","reps":"1 Round","circuit":["Hip 90/90 Stretch — 60s/side","Adductor Rockback — 10 Reps","SL Hip Hinge — 8 Reps/side","Ankle Mob Wall Drill — 10 Reps/side","Dead Bug — 8 Reps/side","Lateral Band Walk — 15 Steps/side","Glute Bridge SL — 10 Reps/side","High Knees — 2 x 20m"],"desc":"Movement quality. Do not rush."},{"label":"B","name":"Rudiment Hops Circuit","reps":"1 Circuit","circuit":["Pogos — 2 x 10","Lateral Bounds — 2 x 5/side","Single Leg Hop Forward — 3 x 5/leg","Broad Jump — 3 x 3","Rotational Broad Jump — 2 x 3/side","Ankle Pop Drill — 2 x 20m"],"desc":"Reactive lower body. Speed of contact over height."},{"label":"C","name":"Skip for Height","reps":"1 x 30m","load":"BW","rest":"90s","desc":"Max vertical height per skip. Drive knee up violently."},{"label":"D","name":"Skip for Distance","reps":"1 x 50m","load":"BW","rest":"90s","desc":"Max horizontal distance per skip."},{"label":"E","name":"Prime Timers","reps":"2 x 30m","load":"BW","rest":"90s","desc":"80% effort. Prime the nervous system."},{"label":"F","name":"Max Velocity Sprints","reps":"3 x 30m / 2 x 40m","load":"BW","rest":"Full (3-5 min)","desc":"Fly start. Accelerate to max speed over 10m, maintain."}]},{"id":"game","day":"Saturday","title":"Game Day","type":"game","custom":false,"sections":[{"label":"A","name":"Score","reps":"Log result","load":"BW","desc":"Record the final score."},{"label":"B","name":"Minutes Played","reps":"Log result","load":"BW","desc":"Minutes on the field."},{"label":"C","name":"3 Positives","reps":"Reflect","load":"BW","desc":"What went well? Be specific. Find 3 things."},{"label":"D","name":"1 Work On","reps":"Reflect","load":"BW","desc":"One clear area to improve."}]},{"id":"rest","day":"Wednesday","title":"Rest & Recovery Day","type":"rest","custom":false,"sections":[{"label":"A","name":"Active Recovery","reps":"Optional","desc":"Light walk, swim or easy cycle 20-30 min. HR < 130bpm."},{"label":"B","name":"Soft Tissue Work","reps":"10-15 min","desc":"Foam roll: glutes, quads, hamstrings, thoracic. 60s per area."},{"label":"C","name":"Breathwork","reps":"5 min","desc":"Box breathing: 4s in, 4s hold, 4s out, 4s hold."}]}];
+
+/* ---------- BLOCK VARIATION TABLES ---------- */
+/* 4 sets of exercise variations cycling across blocks */
+/* Index 0 = Block 1.4, 1 = Block 1.5, 2 = Block 1.6, 3 = Block 2.1, then repeats */
+const BLK_VARS = {"clean":["Low Hang Power Clean","High Hang Power Clean","Dip Clean","Power Clean"],"cleanDesc":["Bar starts just below knee. Drive through the floor, pull explosively. Meet bar in quarter-squat position.","Bar starts at hip crease / high hang position. Explosive hip snap, fast elbows. Receive in quarter-squat.","Use a small dip-and-drive (like push press) to initiate the clean. Aggressive rebend at the hip.","Full pull from the floor. Controlled setup, explosive mid-pull, fast elbows to receive."],"squat":["Back Squat","Box Squat (Saquon Method)","Pause Squat","Hatfield Squat"],"squatWU":["Back Squat — Warm-Up","Box Squat — Warm-Up","Pause Squat — Warm-Up","Hatfield Squat — Warm-Up"],"squatTempo":["3-1-X-0","2-2-X-0","3-3-X-0","3-1-X-1"],"squatDesc":["Barbell on upper back. Control the descent (3s), brief pause at bottom, explosive drive up. Keep knees tracking over toes.","2s descent, 2s pause seated on box, explosive concentric. Maintain tension throughout — do not relax on the box.","3s controlled descent, 3s dead-stop pause at the bottom, explosive drive. Demands patience and strength out of the hole.","One hand on bar, one hand gripping rack for stability. Allows heavier load with less spinal stress. Full depth."],"bench":["Bench Press","Inertia Bench Press — Mid Range BB","Floor Press","Close Grip Bench Press"],"benchDesc":["Standard bench. Bar path from lower chest, slight arch, feet flat. Full ROM. Control the eccentric.","Use momentum at the bottom to build elastic energy. Controlled lowering, explosive press. Develops rate of force development.","Lie on floor, elbows touch floor at bottom. Eliminates leg drive — pure upper-body pressing strength.","Grip ~1.5x shoulder width. Elbows tuck close to body. Targets triceps heavily. Full ROM."],"trap":["Trap Bar Deadlift (High Handles)","Trap Bar Deadlift (Low Handles)","Trap Bar Jump","Romanian Deadlift — Trap Bar"],"trapDesc":["High handles = more upright torso, easier starting position. Hinge at the hip, drive through the floor.","Low handles = longer range of motion, greater hip hinge demand. Maintain neutral spine throughout.","Load trap bar moderately. Deadlift, then on the way up drive all the way through into a jump. Land soft.","Hinge at hip, lower bar to mid-shin, feel hamstring stretch. Drive hips forward to stand."],"singleLeg":["Reverse Lunge for Glutes","Bulgarian Split Squat","Step-Up — Knee Drive","Rear Foot Elevated Split Squat"],"singleLegDesc":["Step back, trail knee to ~2cm from floor. Drive through front heel to stand. Keep torso upright.","Rear foot elevated on bench. Front foot forward. Full depth. Trunk upright.","Step onto box, drive trail knee up to 90° at top. Control descent.","Rear foot elevated, front foot further forward for hamstring & glute bias. Full depth."],"hamCurl":["Glider — Hamstring Curl","Nordic Hamstring Curl","Banded Hamstring Curl — Lying","Single Leg Deadlift — KB"],"hamCurlDesc":["Heels on sliders/gliders, hips up, curl heels to hips. Keep hips high throughout.","Knees on pad, feet anchored. Lower as slowly as possible (eccentric focus). Use hands to help return.","Lying prone, band around ankle. Full ROM curl. Controlled eccentric, explosive concentric.","Single leg, slight knee bend, hinge to lower weight toward floor. Feel hamstring stretch."]};
+
+/* ---------- BLOCK GOALS ---------- */
+/* Each goal defines sets/reps for the ENTIRE block (all 4 weeks fixed) */
+/* Loading progression within each week is defined by the load[] arrays */
+const GOALS = {"hypertrophy":{"label":"Hypertrophy","emoji":"💪","desc":"High volume, moderate load. Build muscle mass and work capacity.","colour":"#4361ee","mainLift":{"sets":"4 x 8","load":["3-4 RIR — technique focus","2-3 RIR — add load","1-2 RIR — near failure","2-3 RIR — deload, reset"],"tempo":"3-0-1-0","rest":"90s"},"accessory":{"sets":"3 x 12","load":["4 RIR","3 RIR","2 RIR","3 RIR (deload)"],"rest":"60s"},"pushPress":{"sets":"4 x 4","load":["2-3 RIR — consistent bar path","1-2 RIR — add weight","1 RIR — push hard","2-3 RIR — deload"]},"clean":{"sets":"5 x 3","load":["65-70% 1RM — technique","72-77% 1RM — build","78-83% 1RM — push","65% 1RM — deload"]},"sprint":["2×20m, 2×30m","3×30m","4×30m","2×20m (deload)"]},"strength":{"label":"Strength","emoji":"🏋️","desc":"Low volume, high load. Build maximal strength across the big lifts.","colour":"#e63946","mainLift":{"sets":"5, 3, 2","load":["3-4 RIR — establish working weights","2-3 RIR — add 2-5% each week","1-2 RIR — near max","1 RIR — peak, go for PB"],"tempo":"2-1-X-0","rest":"180s"},"accessory":{"sets":"3 x 6","load":["3-4 RIR","2-3 RIR","1-2 RIR","2-3 RIR (deload)"],"rest":"90s"},"pushPress":{"sets":"4 x 2","load":["2-3 RIR — build the pattern","1-2 RIR — push to near max","1 RIR — push for PB","Heavy single test — max effort"]},"clean":{"sets":"6 x 1","load":["75-80% 1RM","80-85% 1RM","85-90% 1RM","90%+ 1RM — peak"]},"sprint":["2×20m, 2×30m, 1×40m","5×30m","3×30m, 2×40m","4×40m"]},"power":{"label":"Power","emoji":"⚡","desc":"Moderate load, maximum bar speed. Train rate of force development.","colour":"#f4a261","mainLift":{"sets":"6 x 2","load":["60-65% 1RM — move FAST","65-70% 1RM — maintain speed","70-75% 1RM — speed priority","65% 1RM — deload, bar speed only"],"tempo":"X-0-X-0","rest":"120s"},"accessory":{"sets":"3 x 8","load":["3-4 RIR","2-3 RIR","1-2 RIR","3-4 RIR (deload)"],"rest":"75s"},"pushPress":{"sets":"5 x 2","load":["65% 1RM — explosive intent","70% 1RM — fast & precise","75% 1RM — maintain speed","65% 1RM — deload"]},"clean":{"sets":"6 x 2","load":["70-75% 1RM — bar speed","75-80% 1RM — maintain quality","80-85% 1RM — near max","70% 1RM — deload"]},"sprint":["3×20m, 2×30m","4×30m","3×30m, 2×40m","2×30m (deload)"]},"peaking":{"label":"Peaking","emoji":"🎯","desc":"Very low volume, maximum intensity. Prepare for competition or testing.","colour":"#7b2d8b","mainLift":{"sets":"3, 2, 1","load":["80% 1RM — crisp technique","85% 1RM — build confidence","90%+ 1RM — near max single","Competition / test day"],"tempo":"2-0-X-0","rest":"240s"},"accessory":{"sets":"2 x 5","load":["3-4 RIR — support work only","3 RIR","2-3 RIR","Deload — 50%"],"rest":"90s"},"pushPress":{"sets":"3 x 2","load":["80% — sharp","85% — confident","90%+ — max attempt","Test or rest"]},"clean":{"sets":"4 x 1","load":["82% 1RM","87% 1RM","92%+ 1RM","Max single — test day"]},"sprint":["2×30m, 1×40m","2×40m","1×40m, 1×60m","Game / competition day"]},"deload":{"label":"Deload","emoji":"🌿","desc":"Reduced volume and load. Full recovery, movement quality reset.","colour":"#27ae60","mainLift":{"sets":"3 x 5","load":["50-55% 1RM — movement quality","55-60% 1RM — stay fresh","60% 1RM — feel good","50% 1RM — final flush"],"tempo":"2-1-1-0","rest":"90s"},"accessory":{"sets":"2 x 10","load":["Very easy — 4-5 RIR","Easy — 4 RIR","Comfortable — 3-4 RIR","Very easy flush"],"rest":"60s"},"pushPress":{"sets":"3 x 3","load":["55% — technique only","60% — keep it crisp","60% — no pushing","55% — final session"]},"clean":{"sets":"4 x 2","load":["60% 1RM — positions only","60% 1RM","65% 1RM","60% 1RM — flush"]},"sprint":["2×20m, 1×30m","3×20m","2×30m","1×20m, 1×30m"]},"inseason":{"label":"In-Season","emoji":"🏉","desc":"Maintain strength and power with minimal fatigue. Game readiness is priority.","colour":"#2ec4b6","mainLift":{"sets":"3 x 3","load":["70-75% 1RM — sharp","75-80% 1RM — quality reps","78-82% 1RM — maintain","70% — pre-game flush"],"tempo":"2-0-X-0","rest":"150s"},"accessory":{"sets":"2 x 8","load":["3-4 RIR — support only","2-3 RIR","2-3 RIR","3-4 RIR — deload week"],"rest":"75s"},"pushPress":{"sets":"3 x 3","load":["70% — crisp","75% — confident","78% — maintain","70% — game week"]},"clean":{"sets":"4 x 2","load":["72% 1RM — quality","77% 1RM","80% 1RM","70% 1RM — game week"]},"sprint":["2×20m, 2×30m","3×30m","2×30m, 1×40m","2×20m — game week"]}};
+
+/* ---------- BLOCK LABEL → INDEX MAP ---------- */
+/* Maps block labels (e.g. "1.4") to sequential index for variation selection */
+const BLK_MAP = {"1.1":0,"1.2":1,"1.3":2,"1.4":3,"1.5":4,"1.6":5,"2.1":6,"2.2":7,"2.3":8,"2.4":9,"2.5":10,"2.6":11,"3.1":12,"3.2":13,"3.3":14,"3.4":15};
+
+/* ============================================================
+   RUNTIME STATE — Do not edit
+   ============================================================ */
+let _allW = [...PRESET_WORKOUTS];
+let _act = _allW[0].id;
+let _doneSet = {};
+let _timers = {};
+let _isGameWeek = true;
+let _wType = 'strength';
+let _blks = [];
+let _editId = null;
+
+/* Load custom workouts from localStorage */
+(function(){
+  try {
+    const cw = JSON.parse(localStorage.getItem('jh_cw3') || '[]');
+    _allW = [...PRESET_WORKOUTS, ...cw];
+  } catch(e) { console.warn('Could not load saved workouts', e); }
+})();
+
+
+/* ============================================================
+   HELPER FUNCTIONS
+   ============================================================ */
+
+function _getBlkIdx(blkStr) { return BLK_MAP[blkStr] !== undefined ? BLK_MAP[blkStr] : 0; }
+function _today() { return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function _logKey(wid, si, exLabel) { return wid+'|'+si+'|'+(exLabel||''); }
+function _parseSets(repsStr) {
+  if (!repsStr) return 1;
+  repsStr = repsStr.trim();
+  let m = repsStr.match(/^(\d+)\s*x/i);
+  if (m) return parseInt(m[1]);
+  let parts = repsStr.split(',').filter(p => p.trim().match(/^\d/));
+  if (parts.length > 1) return parts.length;
+  return 1;
+}
+function _getLog() { try { return JSON.parse(localStorage.getItem('jh_log')||'{}'); } catch(e) { return {}; } }
+function _saveLog(data) { localStorage.setItem('jh_log', JSON.stringify(data)); }
+function _toast(msg, col) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = col||'#27ae60';
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+/* ============================================================
+   LOG RENDER & SAVE
+   ============================================================ */
+
+function _renderLog(wid, si, exName, exReps, exLabel) {
+  const key = _logKey(wid, si, exLabel);
+  const allLog = _getLog();
+  const todayStr = _today();
+  const todayEntry = (allLog[key]||[]).find(e=>e.date===todayStr);
+  const numSets = _parseSets(exReps);
+  const savedSets = todayEntry ? todayEntry.sets : [];
+  const savedComment = todayEntry ? (todayEntry.comment||'') : '';
+  let setRows = '';
+  for (let i=0; i<numSets; i++) {
+    const saved = savedSets[i]||{};
+    setRows += `<div class="log-set-row">
+      <div class="log-set-num">Set ${i+1}</div>
+      <input class="log-input" type="text" inputmode="decimal" placeholder="kg"
+        value="${saved.w||''}" id="lw_${key}_${i}" style="max-width:80px">
+      <div class="log-x">×</div>
+      <input class="log-input" type="text" inputmode="numeric" placeholder="reps"
+        value="${saved.r||''}" id="lr_${key}_${i}" style="max-width:70px">
+    </div>`;
+  }
+  const hist = (allLog[key]||[]).filter(e=>e.date!==todayStr).slice(-3).reverse();
+  let histHtml = '';
+  if (hist.length > 0) {
+    histHtml = '<div class="log-hist"><div class="log-hist-title">Previous Sessions</div>';
+    hist.forEach(e => {
+      const setsStr = (e.sets||[]).map((s,i)=>'S'+(i+1)+': '+(s.w||'—')+'kg × '+(s.r||'—')).join(' · ');
+      histHtml += `<div class="log-hist-entry"><div class="log-hist-date">${e.date}</div>
+        <div class="log-hist-sets">${setsStr||'No set data'}</div>
+        ${e.comment?'<div class="log-hist-comment">💬 '+e.comment+'</div>':''}</div>`;
+    });
+    histHtml += '</div>';
+  }
+  return `<div class="log-section">
+    <div class="log-title">📊 Log This Session</div>
+    <div class="log-sets">${setRows}</div>
+    <textarea class="log-comment" placeholder="Add notes… (e.g. felt strong, bar speed good)"
+      id="lc_${key}" rows="2">${savedComment}</textarea>
+    <button class="log-save-btn" onclick="saveExLog('${key}',${numSets})">Save Log</button>
+    <div class="log-saved-badge" id="lbadge_${key}">✓ Saved</div>
+    ${histHtml}
+  </div>`;
+}
+
+function saveExLog(key, numSets) {
+  const allLog = _getLog();
+  if (!allLog[key]) allLog[key] = [];
+  const todayStr = _today();
+  const sets = [];
+  for (let i=0; i<numSets; i++) {
+    const wEl = document.getElementById('lw_'+key+'_'+i);
+    const rEl = document.getElementById('lr_'+key+'_'+i);
+    sets.push({w:wEl?wEl.value.trim():'', r:rEl?rEl.value.trim():''});
+  }
+  const comment = (document.getElementById('lc_'+key)||{}).value||'';
+  allLog[key] = allLog[key].filter(e=>e.date!==todayStr);
+  allLog[key].push({date:todayStr, sets, comment});
+  _saveLog(allLog);
+  const badge = document.getElementById('lbadge_'+key);
+  if (badge){badge.classList.add('show');setTimeout(()=>badge.classList.remove('show'),2000);}
+  _toast('✓ '+(numSets>1?numSets+' sets':'Set')+' logged!');
+}
+
+
+/* ============================================================
+   SECTION & WORKOUT RENDERER
+   ============================================================ */
+
+function _renderSection(w, s, si) {
+  const wid = w.id;
+  const shouldLog = (w.type==='strength'||w.type==='power') && !s.circuit;
+  const ssColor = ['#4361ee','#e63946','#f4a261','#2ec4b6','#7b2d8b','#27ae60'];
+  let bodyHtml = '';
+
+  if (s.circuit) {
+    const items = s.circuit.map((c,ci)=>`<li><div class="circ-num">${ci+1}</div><span>${c}</span></li>`).join('');
+    bodyHtml += `<ul class="circ-list">${items}</ul>`;
+    if (s.desc) bodyHtml += `<div class="cnote">${s.desc}</div>`;
+    if (s.note) bodyHtml += `<div class="coach-note">💬 ${s.note}</div>`;
+  } else if (s.superset) {
+    bodyHtml += `<div class="ss-label">⚡ Superset — Back-to-back, rest after both</div>`;
+    s.exercises.forEach((ex,exi) => {
+      let chips = '';
+      if (ex.reps) chips += `<div class="chip reps">${ex.reps}</div>`;
+      if (ex.load) chips += `<div class="chip load">⚖ ${ex.load}</div>`;
+      if (ex.tempo) chips += `<div class="chip tempo">♩ ${ex.tempo}</div>`;
+      if (ex.rest) chips += `<div class="chip rest">⏱ ${ex.rest}</div>`;
+      bodyHtml += `<div class="ss-ex">
+        <div class="ss-ex-head">
+          <div class="ss-badge" style="background:${ssColor[exi%ssColor.length]}">${ex.label}</div>
+          <div class="ss-name">${ex.name}</div>
+        </div>
+        ${chips?'<div class="chips">'+chips+'</div>':''}
+        ${ex.desc?'<div class="cnote">'+ex.desc+'</div>':''}
+        ${ex.note?'<div class="coach-note">💬 '+ex.note+'</div>':''}
+        ${shouldLog?_renderLog(wid,si,ex.name,ex.reps,ex.label):''}
+      </div>`;
+    });
+  } else {
+    let chips = '';
+    if (s.reps) chips += `<div class="chip reps">${s.reps}</div>`;
+    if (s.load) chips += `<div class="chip load">⚖ ${s.load}</div>`;
+    if (s.tempo) chips += `<div class="chip tempo">♩ ${s.tempo}</div>`;
+    if (s.rest) chips += `<div class="chip rest">⏱ ${s.rest}</div>`;
+    bodyHtml += chips?`<div class="chips">${chips}</div>`:'';
+    if (s.desc) bodyHtml += `<div class="cnote">${s.desc}</div>`;
+    if (s.note) bodyHtml += `<div class="coach-note">💬 ${s.note}</div>`;
+    if (s.rest) {
+      const sec = parseInt(s.rest.replace('s',''));
+      if (!isNaN(sec) && sec > 0) {
+        const tid = 'tmr_'+wid+'_'+si;
+        const mm = Math.floor(sec/60), ss = sec%60;
+        const disp = mm+'m '+String(ss).padStart(2,'0')+'s';
+        bodyHtml += `<div class="timer-box">
+          <div class="timer-display" id="${tid}_d">${disp}</div>
+          <div class="timer-label">Rest Timer</div>
+          <div class="timer-btns">
+            <button class="tbtn start" onclick="startT('${tid}',${sec})">Start Rest</button>
+            <button class="tbtn reset" onclick="resetT('${tid}',${sec},'${disp}')">↺ Reset</button>
+          </div>
+        </div>`;
+      }
+    }
+    if (shouldLog) bodyHtml += _renderLog(wid, si, s.name, s.reps, s.label);
+  }
+  bodyHtml += `<button class="mark-btn${_doneSet[wid+si]?' done':''}" id="tb_${wid}_${si}" onclick="markDone('${wid}',${si})">${_doneSet[wid+si]?'✓ Done':'Mark as Done'}</button>`;
+
+  const secId = 'sec_'+wid+'_'+si;
+  return `<div class="sec" id="st_${wid}_${si}">
+    <div class="sec-head" onclick="toggleSec('${secId}')">
+      <div class="sec-badge">${s.label||String.fromCharCode(64+si+1)}</div>
+      <div class="sec-name">${s.name}</div>
+      <div class="sec-chevron open" id="chev_${secId}">▲</div>
+    </div>
+    <div class="sec-body open" id="${secId}">${bodyHtml}</div>
+  </div>`;
+}
+
+function toggleSec(id) {
+  const el = document.getElementById(id);
+  const ch = document.getElementById('chev_'+id);
+  if (!el) return;
+  const open = el.classList.toggle('open');
+  if (ch) ch.classList.toggle('open', open);
+  el.style.display = open ? 'block' : 'none';
+}
+
+function _render() {
+  const icons = {strength:'💪',power:'⚡',speed:'🏃',rest:'😴',game:'🏉',recovery:'🌿'};
+  const nav = document.getElementById('nav');
+  nav.innerHTML = _allW.map(w=>
+    `<button class="${w.id===_act?'active':''}" onclick="setA('${w.id}')">${icons[w.type]||'💪'} ${w.date||w.day||'—'}${w.custom?' ✶':''}</button>`
+  ).join('') + `<div class="nav-actions">
+    <button class="nav-btn" onclick="document.getElementById('manMod').classList.add('open')">✏ Manual</button>
+    <button class="nav-btn" style="background:#e63946" onclick="openAG()">🤖 Auto</button>
+  </div>`;
+
+  const w = _allW.find(x=>x.id===_act);
+  if (!w) { document.getElementById('app').innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No workout selected.</p></div>'; return; }
+
+  const total = w.sections.length;
+  const done = Object.keys(_doneSet).filter(k=>k.startsWith(w.id)&&_doneSet[k]).length;
+  const pct = total > 0 ? Math.round(done/total*100) : 0;
+
+  document.getElementById('app').innerHTML = `<div class="wcard">
+    <div class="wcard-head">
+      <h2>${w.title}</h2>
+      <div class="wmeta">
+        <span class="wtype ${w.type}">${icons[w.type]||'💪'} ${w.type}</span>
+        <span class="wmeta-date">${w.day||''} ${w.date?'· '+w.date:''}</span>
+      </div>
+      ${w.custom?`<div class="wcard-actions"><button class="btn-edit" onclick="openEdit('${w.id}')">✏ Edit</button><button class="btn-del" onclick="delW('${w.id}')">🗑 Delete</button></div>`:''}
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-txt">${done}/${total} complete (${pct}%)</div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    </div>
+    ${w.sections.map((s,si)=>_renderSection(w,s,si)).join('')}
+  </div>`;
+
+  const activeBtn = nav.querySelector('button.active');
+  if (activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+
+function setA(id) { _act=id; _render(); document.getElementById('app').scrollTop=0; }
+
+function markDone(wid, si) {
+  const k = wid+si;
+  _doneSet[k] = !_doneSet[k];
+  const btn = document.getElementById('tb_'+wid+'_'+si);
+  if (btn){btn.textContent=_doneSet[k]?'✓ Done':'Mark as Done';btn.classList.toggle('done',_doneSet[k]);}
+  const w = _allW.find(x=>x.id===wid);
+  if (w){
+    const total=w.sections.length;
+    const done=Object.keys(_doneSet).filter(k2=>k2.startsWith(wid)&&_doneSet[k2]).length;
+    const pct=Math.round(done/total*100);
+    const pb=document.querySelector('.prog-fill');const pt=document.querySelector('.prog-txt');
+    if(pb)pb.style.width=pct+'%';if(pt)pt.textContent=done+'/'+total+' complete ('+pct+'%)';
+  }
+}
+
+function startT(tid, sec) {
+  if (_timers[tid]) clearInterval(_timers[tid]);
+  let rem = sec;
+  const el = document.getElementById(tid+'_d');
+  _timers[tid] = setInterval(()=>{
+    rem--;
+    if(!el){clearInterval(_timers[tid]);return;}
+    if(rem<=0){clearInterval(_timers[tid]);el.textContent='GO!';el.style.color='#27ae60';
+      if('vibrate'in navigator)navigator.vibrate([200,100,200,100,400]);
+      _toast('⏱ Rest complete — GO!','#27ae60');return;}
+    const mm=Math.floor(rem/60),ss=rem%60;
+    el.textContent=mm+'m '+String(ss).padStart(2,'0')+'s';
+    el.style.color=rem<=10?'#f4a261':'#e74c3c';
+  },1000);
+}
+
+function resetT(tid, sec, disp) {
+  if(_timers[tid]){clearInterval(_timers[tid]);delete _timers[tid];}
+  const el=document.getElementById(tid+'_d');
+  if(el){el.textContent=disp;el.style.color='#e74c3c';}
+}
+
+function delW(id) {
+  const w=_allW.find(x=>x.id===id);
+  if(!w||!w.custom)return;
+  if(!confirm('Delete "'+w.title+'"?'))return;
+  _allW=_allW.filter(x=>x.id!==id);
+  let cw=[];try{cw=JSON.parse(localStorage.getItem('jh_cw3')||'[]');}catch(e){}
+  cw=cw.filter(x=>x.id!==id);
+  localStorage.setItem('jh_cw3',JSON.stringify(cw));
+  _act=_allW[0].id;_render();_toast('🗑 Workout deleted','#e74c3c');
+}
+
+
+/* ============================================================
+   MANUAL CREATE WORKOUT
+   ============================================================ */
+
+function setType(t, btn) {
+  _wType=t;
+  document.querySelectorAll('.type-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function addBlk() {
+  _blks.push({name:'',reps:'',load:'',tempo:'',rest:'',desc:''});
+  renderBlkCon();
+}
+
+function rmBlk(i) { _blks.splice(i,1); renderBlkCon(); }
+
+function renderBlkCon() {
+  const con = document.getElementById('blkCon');
+  if(!con)return;
+  con.innerHTML = _blks.map((b,i)=>`
+    <div class="blk-card">
+      <div class="blk-head">
+        <div class="blk-num">${i+1}</div>
+        <div class="blk-type">Block ${i+1}</div>
+        <button class="blk-rm" onclick="rmBlk(${i})">✕ Remove</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Exercise Name</label>
+        <input class="form-input" placeholder="Exercise name" value="${b.name}" oninput="_blks[${i}].name=this.value">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="form-group">
+          <label class="form-label">Sets/Reps</label>
+          <input class="form-input" placeholder="3 x 8" value="${b.reps}" oninput="_blks[${i}].reps=this.value">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Load</label>
+          <input class="form-input" placeholder="RPE 8" value="${b.load}" oninput="_blks[${i}].load=this.value">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input class="form-input" placeholder="Coach notes…" value="${b.desc}" oninput="_blks[${i}].desc=this.value">
+      </div>
+    </div>`).join('');
+}
+
+function saveW() {
+  const name=document.getElementById('wN').value.trim();
+  const day=document.getElementById('wD').value.trim();
+  if(!name){_toast('Enter a workout name','#e63946');return;}
+  const id=_editId||'man_'+Date.now();
+  const sections=_blks.map((b,i)=>({label:String.fromCharCode(65+i),name:b.name||'Exercise '+(i+1),reps:b.reps,load:b.load,tempo:b.tempo,rest:b.rest,desc:b.desc}));
+  const workout={id,title:name,day,date:day,type:_wType,custom:true,sections};
+  if(_editId){const idx=_allW.findIndex(x=>x.id===_editId);if(idx!==-1)_allW[idx]=workout;}
+  else _allW.push(workout);
+  let cw=[];try{cw=JSON.parse(localStorage.getItem('jh_cw3')||'[]');}catch(e){}
+  if(_editId)cw=cw.filter(x=>x.id!==_editId);
+  cw.push(workout);
+  localStorage.setItem('jh_cw3',JSON.stringify(cw));
+  _editId=null;_blks=[];
+  document.getElementById('manMod').classList.remove('open');
+  _act=id;_render();_toast('💾 Workout saved!');
+}
+
+function openEdit(id) {
+  const w=_allW.find(x=>x.id===id);if(!w)return;
+  _editId=id;
+  _blks=(w.sections||[]).map(s=>({name:s.name||'',reps:s.reps||'',load:s.load||'',tempo:s.tempo||'',rest:s.rest||'',desc:s.desc||''}));
+  document.getElementById('wN').value=w.title||'';
+  document.getElementById('wD').value=w.day||w.date||'';
+  _wType=w.type||'strength';renderBlkCon();
+  document.getElementById('manMod').classList.add('open');
+}
+
+
+/* ============================================================
+   WORKOUT GENERATORS
+   ============================================================ */
+
+function _genUpper(blk, wk, day, date, goal) {
+  const bi = (blk-1)%4, wi = wk-1;
+  const V = window._BLK_VARS;
+  const G = window._GOALS[goal] || window._GOALS.strength;
+
+  return {
+    id:'gen_upper', title:'Competition '+blk+'.'+wk+': Upper Strength & Power',
+    day, date, type:'strength', goal,
+    sections:[
+      {
+        label:'A', name:'Movement Prep', reps:'3 Rounds',
+        circuit:['DB Decline Ext Rot — 6 Reps','Y-Raise Incline — 8 Reps','Arm Bar KB — 4 Reps/side'],
+        desc:'Shoulder & thoracic mobility prep. Full range on every rep.'
+      },
+      {
+        label:'B', name:'Behind the Neck Push Press',
+        reps: G.pushPress.sets,
+        load: G.pushPress.load[wi],
+        tempo:'X-0-X-0', rest:'120s',
+        desc:'Barbell on upper back, wide pronated grip. Quarter-squat dip then explosively press overhead.'
+      },
+      {
+        label:'C', name:'C1/C2 Superset', superset:true, exercises:[
+          {
+            label:'C1', name: V.bench[bi],
+            reps: G.mainLift.sets,
+            load: G.mainLift.load[wi],
+            tempo: G.mainLift.tempo, rest: G.mainLift.rest,
+            desc: V.benchDesc[bi]
+          },
+          {
+            label:'C2', name:'Chin-Up — Supinated — Hollow Body',
+            reps: G.mainLift.sets,
+            load:'Match bench intensity',
+            tempo: G.mainLift.tempo, rest: G.mainLift.rest,
+            desc:'Dead hang start, drive elbows to hips, chin clears bar. Hollow body throughout.'
+          }
+        ]
+      },
+      {
+        label:'D', name:'D1/D2 Superset', superset:true, exercises:[
+          {
+            label:'D1', name:'Seated Close Grip Press',
+            reps: G.accessory.sets, load: G.accessory.load[wi],
+            tempo:'2-0-1-0', rest: G.accessory.rest,
+            desc:'Seated DB or cable press. Control eccentric, press explosively.'
+          },
+          {
+            label:'D2', name:'Seated Row — Mid Grip — Neutral',
+            reps: G.accessory.sets, load: G.accessory.load[wi],
+            tempo:'2-0-1-1', rest: G.accessory.rest,
+            desc:'Retract scapula first, then pull. 1s hold. Keep torso still.'
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function _genLower(blk, wk, day, date, goal) {
+  const bi = (blk-1)%4, wi = wk-1;
+  const V = window._BLK_VARS;
+  const G = window._GOALS[goal] || window._GOALS.strength;
+
+  return {
+    id:'gen_lower', title:'Competition '+blk+'.'+wk+': Impulse (Lower)',
+    day, date, type:'strength', goal,
+    sections:[
+      {
+        label:'A', name: V.squatWU[bi], reps:'3 x 3',
+        load:'50-60% of working weight',
+        tempo: V.squatTempo[bi], rest:'90s',
+        note:'WU sets — intent to move FAST',
+        desc:'Warm-up sets with focus on explosive intent. Activation only — do not grind.'
+      },
+      {
+        label:'B', name:'B1/B2 Superset', superset:true, exercises:[
+          {
+            label:'B1', name: V.squat[bi]+' — Working Sets',
+            reps: G.mainLift.sets, load: G.mainLift.load[wi],
+            tempo: V.squatTempo[bi], rest: G.mainLift.rest,
+            desc: V.squatDesc[bi]
+          },
+          {
+            label:'B2', name:'Half Kneeling Cable Chop',
+            reps: G.accessory.sets, load: G.accessory.load[wi],
+            tempo:'2-0-X-0', rest: G.mainLift.rest,
+            desc:'Kneeling on trail leg. Chop diagonally. Anti-rotation core stability.'
+          }
+        ]
+      },
+      {
+        label:'C', name:'C1/C2 Superset', superset:true, exercises:[
+          {
+            label:'C1', name: V.singleLeg[bi],
+            reps: G.accessory.sets+'/leg', load: G.accessory.load[wi],
+            tempo:'2-0-X-0', rest: G.accessory.rest,
+            desc: V.singleLegDesc[bi]
+          },
+          {
+            label:'C2', name: V.hamCurl[bi],
+            reps: G.accessory.sets+'/leg', load: G.accessory.load[wi],
+            tempo:'3-0-1-0', rest: G.accessory.rest,
+            desc: V.hamCurlDesc[bi]
+          }
+        ]
+      },
+      {
+        label:'D', name:'D1/D2 Superset', superset:true, exercises:[
+          {
+            label:'D1', name:'Single Leg Calf Raise Iso — DB',
+            reps: G.accessory.sets+'/leg', load: G.accessory.load[wi],
+            tempo:'2-2-X-1', rest: G.accessory.rest,
+            desc:'Full ROM. 2s up, 2s iso hold at top.'
+          },
+          {
+            label:'D2', name:'Incline Garhammer Raise',
+            reps: G.accessory.sets, load:'Bodyweight',
+            tempo:'2-0-1-0', rest: G.accessory.rest,
+            desc:'Incline bench. Curl knees to chest, raise hips. Targets lower abs.'
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function _genPower(blk, wk, day, date, goal) {
+  const bi = (blk-1)%4, wi = wk-1;
+  const V = window._BLK_VARS;
+  const G = window._GOALS[goal] || window._GOALS.strength;
+
+  return {
+    id:'gen_power', title:'Competition '+blk+'.'+wk+': Impulse (Power)',
+    day, date, type:'power', goal,
+    sections:[
+      {
+        label:'A', name:'Depth Jump', reps:'4 x 3', load:'Bodyweight',
+        tempo:'X-0-X-0', rest:'120s',
+        note:'Minimal ground contact time. Think: hot coals.',
+        desc:'Step off box, land on two feet, immediately jump as high as possible. Reactive strength.'
+      },
+      {
+        label:'B', name: V.clean[bi],
+        reps: G.clean.sets, load: G.clean.load[wi],
+        tempo:'X-0-X-0', rest:'150s',
+        desc: V.cleanDesc[bi]
+      },
+      {
+        label:'C', name: V.trap[bi],
+        reps: G.mainLift.sets, load: G.mainLift.load[wi],
+        tempo:'2-0-X-0', rest: G.mainLift.rest,
+        desc: V.trapDesc[bi]
+      },
+      {
+        label:'D', name:'D1/D2 Superset', superset:true, exercises:[
+          {
+            label:'D1', name:'Close Grip Bench Press',
+            reps: G.mainLift.sets, load: G.mainLift.load[wi],
+            tempo:'2-0-1-0', rest: G.mainLift.rest,
+            desc:'Grip 1.5x shoulder width. Elbows tuck. Full ROM. Bar speed on way up.'
+          },
+          {
+            label:'D2', name:'Pendlay Row',
+            reps: G.mainLift.sets, load: G.mainLift.load[wi],
+            tempo:'1-0-X-1', rest: G.mainLift.rest,
+            desc:'Bar rests on floor each rep. Explosive pull to lower chest.'
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function _genPowerNonGame(blk, wk, day, date, goal) {
+  const bi = (blk-1)%4, wi = wk-1;
+  const V = window._BLK_VARS;
+  const G = window._GOALS[goal] || window._GOALS.strength;
+
+  // Goal-specific robustness blocks for Friday extension
+  const robustness = {
+    hypertrophy: {
+      name: 'Volume Robustness — Posterior Chain',
+      sections: [
+        { label:'E', name:'E1/E2 Superset', superset:true, exercises:[
+          { label:'E1', name:'Romanian Deadlift — DB', reps:'3 x 10', load:'3-4 RIR', tempo:'3-0-1-0', rest:'90s',
+            desc:'Hinge at hip, lower DBs to mid-shin. Feel hamstring stretch. Drive hips forward to stand. High volume, moderate load.' },
+          { label:'E2', name:'Copenhagen Plank', reps:'3 x 20s/side', load:'Bodyweight', tempo:'Iso hold', rest:'90s',
+            desc:'Side plank with top leg elevated on bench. Lift bottom leg off floor. Builds adductor & groin robustness.' }
+        ]},
+        { label:'F', name:'F1/F2 Superset', superset:true, exercises:[
+          { label:'F1', name:'Seated Hamstring Curl — Machine', reps:'3 x 12', load:'3-4 RIR', tempo:'2-1-1-0', rest:'75s',
+            desc:'Full ROM. 1s squeeze at peak contraction. Slow eccentric. Hamstring hypertrophy focus.' },
+          { label:'F2', name:'Banded Hip Abduction — Standing', reps:'3 x 15/side', load:'Light band', tempo:'2-0-1-1', rest:'75s',
+            desc:'Band around ankles, slight knee bend. Kick leg out laterally. Glute med activation and hip stability.' }
+        ]},
+        { label:'G', name:'Shoulder Robustness Circuit', reps:'2 Rounds',
+          circuit:['Band Pull-Apart — 15 Reps','Face Pull — 15 Reps','External Rotation — 12 Reps/side','YTWL — 8 Reps/position'],
+          desc:'Rotator cuff & scapular health. Light load, full control. Non-negotiable for overhead athletes.' }
+      ]
+    },
+    strength: {
+      name: 'Loaded Carries & Structural Robustness',
+      sections: [
+        { label:'E', name:'Loaded Carry Complex', reps:'3 Rounds',
+          circuit:['Farmer Carry — 40m (heavy)','Single Arm Suitcase Carry — 20m/side','Overhead Carry — 20m (moderate)'],
+          desc:'Minimal rest between carries within a round. 2 min between rounds. Grip, core, shoulder stability under load.' },
+        { label:'F', name:'F1/F2 Superset', superset:true, exercises:[
+          { label:'F1', name:'Reverse Hyper / GHD Hip Extension', reps:'3 x 10', load:'Bodyweight or light', tempo:'2-1-1-0', rest:'90s',
+            desc:'Posterior chain reinforcement. Squeeze glutes at top. Protect the lower back under heavy training loads.' },
+          { label:'F2', name:'Pallof Press — Cable', reps:'3 x 10/side', load:'Moderate', tempo:'2-2-1-0', rest:'90s',
+            desc:'Anti-rotation core stability. Extend arms, hold 2s, return. Keep hips square. Trunk stability for heavy lifting.' }
+        ]},
+        { label:'G', name:'Shoulder Robustness Circuit', reps:'2 Rounds',
+          circuit:['Band Pull-Apart — 15 Reps','Face Pull — 15 Reps','External Rotation — 12 Reps/side','YTWL — 8 Reps/position'],
+          desc:'Rotator cuff & scapular health. Keep it light and controlled.' }
+      ]
+    },
+    power: {
+      name: 'Speed-Strength Extension & Plyometric Volume',
+      sections: [
+        { label:'E', name:'Bounding Circuit', reps:'3 Rounds',
+          circuit:['Continuous Bounds — 5 contacts/leg','Lateral Hurdle Hop — 5 reps/side','Depth Drop to Bound — 4 reps','Zigzag Hop — 10m'],
+          desc:'Reactive power extension. Full recovery between rounds. Focus on elastic stiffness and ground contact time.' },
+        { label:'F', name:'F1/F2 Superset', superset:true, exercises:[
+          { label:'F1', name:'Trap Bar Jump — Light', reps:'4 x 3', load:'40-50% 1RM', tempo:'X-0-X-0', rest:'90s',
+            desc:'Maximal intent on every rep. Bar speed is the goal. If speed drops, stop the set.' },
+          { label:'F2', name:'Ankle Stiffness Drill — Pogo Hops', reps:'4 x 10', load:'Bodyweight', tempo:'Max stiffness', rest:'60s',
+            desc:'Minimal knee bend. Drive through the ankle. Reactive, not high — think speed not height.' }
+        ]},
+        { label:'G', name:'Shoulder Robustness Circuit', reps:'2 Rounds',
+          circuit:['Band Pull-Apart — 15 Reps','Face Pull — 15 Reps','External Rotation — 12 Reps/side','YTWL — 8 Reps/position'],
+          desc:'Non-negotiable shoulder maintenance for overhead power athletes.' }
+      ]
+    },
+    peaking: {
+      name: 'Pre-Competition Activation',
+      sections: [
+        { label:'E', name:'CNS Primer Circuit', reps:'2 Rounds',
+          circuit:['Squat Jump — 3 Reps (explosive)','Med Ball Slam — 3 Reps (max intent)','Box Jump — 3 Reps','Broad Jump — 3 Reps'],
+          desc:'Light CNS activation — not a training session. Intent is max, volume is minimal. Leave feeling sharp, not tired.' },
+        { label:'F', name:'Mobility & Tissue Quality', reps:'15 min',
+          circuit:['Hip Flexor Stretch — 90s/side','Thoracic Rotation — 10 reps/side','Ankle Mob — 10 reps/side','Foam Roll — Quads & Glutes'],
+          desc:'Competition prep mobility. Address any tight areas from the week.' },
+        { label:'G', name:'Shoulder Robustness Circuit', reps:'1 Round',
+          circuit:['Band Pull-Apart — 15 Reps','Face Pull — 15 Reps','External Rotation — 12 Reps/side'],
+          desc:'Brief shoulder priming. Light and fast.' }
+      ]
+    },
+    deload: {
+      name: 'Active Recovery Extension',
+      sections: [
+        { label:'E', name:'Aerobic Flush', reps:'20 min', load:'Low intensity',
+          desc:'Easy bike, row or ski erg. HR 120-140bpm. Flush the legs and accelerate recovery. Not a workout.' },
+        { label:'F', name:'Full Body Mobility Flow', reps:'10 min',
+          circuit:['World\'s Greatest Stretch — 5 reps/side','Hip 90/90 Transition — 10 reps','Thoracic Extension over Foam Roller — 60s','Child\'s Pose to Cobra — 10 reps'],
+          desc:'Move through full range. No forcing. Let the body breathe.' },
+        { label:'G', name:'Shoulder Robustness Circuit', reps:'1 Round',
+          circuit:['Band Pull-Apart — 15 Reps','Face Pull — 15 Reps','External Rotation — 12 Reps/side'],
+          desc:'Maintenance work only. Light load.' }
+      ]
+    },
+    inseason: {
+      name: 'Robustness & Readiness',
+      sections: [
+        { label:'E', name:'E1/E2 Superset', superset:true, exercises:[
+          { label:'E1', name:'Nordic Hamstring Curl', reps:'3 x 5', load:'Bodyweight', tempo:'4-0-1-0', rest:'90s',
+            desc:'Eccentric focus. Lower SLOW (4s). Use hands for return. Injury prevention priority during season.' },
+          { label:'E2', name:'Copenhagen Plank', reps:'3 x 20s/side', load:'Bodyweight', tempo:'Iso hold', rest:'90s',
+            desc:'Groin & adductor robustness. Critical during high game volume periods.' }
+        ]},
+        { label:'F', name:'Single Leg Stability Circuit', reps:'2 Rounds',
+          circuit:['SL Romanian Deadlift — 8 reps/side','SL Calf Raise — 12 reps/side','SL Hip Hinge with Reach — 8 reps/side','Lateral Band Walk — 15 steps/side'],
+          desc:'Ankle, knee and hip robustness on each leg independently. Addresses asymmetries that build up during the season.' },
+        { label:'G', name:'Shoulder Robustness Circuit', reps:'2 Rounds',
+          circuit:['Band Pull-Apart — 15 Reps','Face Pull — 15 Reps','External Rotation — 12 Reps/side','YTWL — 8 Reps/position'],
+          desc:'Shoulder health maintenance for tackling and contact sport athletes.' }
+      ]
+    }
+  };
+
+  // Get robustness for this goal (fall back to strength)
+  const rob = robustness[goal] || robustness.strength;
+
+  // Build the full non-game power session = standard power + robustness extension
+  const basePower = window._genPower(blk, wk, day, date, goal);
+
+  return {
+    ...basePower,
+    id: 'gen_power',
+    title: 'Competition '+blk+'.'+wk+': Impulse Power + Robustness',
+    sections: [
+      ...basePower.sections,
+      // Divider section
+      { label:'—', name: '── ' + rob.name + ' ──', reps: 'Non-Game Extension',
+        desc: 'Additional work added because there is no game this week. Use this time to build robustness and address weaknesses.' },
+      ...rob.sections
+    ]
+  };
+}
+
+function _genAthlete(blk, wk, day, date, goal) {
+  const wi = wk-1;
+  const G = window._GOALS[goal] || window._GOALS.strength;
+  const sprintDesc = G.sprint[wi];
+  const sprintSets = [
+    [{reps:'2 x 20m'},{reps:'2 x 30m'},{reps:'1 x 40m'}],
+    [{reps:'5 x 30m'}],
+    [{reps:'3 x 30m'},{reps:'2 x 40m'}],
+    [{reps:'4 x 40m'}]
+  ];
+  // For non-standard goals, use the sprint string directly
+  const customSprints = G.sprint[wi].split(',').map((s,i) => ({
+    label: String.fromCharCode(70+i),
+    name: 'Max Velocity Sprint — ' + s.trim(),
+    reps: s.trim(), load:'Bodyweight',
+    tempo:'Max effort', rest:'Full (3-5 min)',
+    note: sprintDesc,
+    desc:'Fly start — accelerate to max speed over 10m, maintain through rep. Quality over quantity.'
+  }));
+
+  return {
+    id:'gen_athlete', title:'Competition '+blk+'.'+wk+' — Athlete Day',
+    day, date, type:'speed', goal,
+    sections:[
+      {label:'A', name:'Pre-Hab', reps:'1 Round',
+        circuit:['Hip 90/90 Stretch — 60s/side','Adductor Rockback — 10 Reps','SL Hip Hinge — 8 Reps/side','Ankle Mob — Wall Drill — 10 Reps/side','Dead Bug — 8 Reps/side','Lateral Band Walk — 15 Steps/side','Glute Bridge SL — 10 Reps/side','High Knees — 2 x 20m'],
+        desc:'Movement quality work. Do not rush this section.'},
+      {label:'B', name:'Rudiment Hops Circuit', reps:'1 Circuit',
+        circuit:['Pogos — 2 x 10','Lateral Bounds — 2 x 5/side','Single Leg Hop Forward — 3 x 5/leg','Broad Jump — 3 x 3','Rotational Broad Jump — 2 x 3/side','Ankle Pop Drill — 2 x 20m'],
+        desc:'Reactive lower body. Focus on stiffness and ground contact time.'},
+      {label:'C', name:'Skip for Height', reps:'1 x 30m', load:'Bodyweight', rest:'90s', desc:'Max vertical height per skip.'},
+      {label:'D', name:'Skip for Distance', reps:'1 x 50m', load:'Bodyweight', rest:'90s', desc:'Max horizontal distance per skip.'},
+      {label:'E', name:'Prime Timers', reps:'2 x 30m', load:'Bodyweight', rest:'90s', desc:'80% effort — prime the nervous system.'},
+      ...customSprints
+    ]
+  };
+}
+
+function _genRest(blk,wk,day,date) { return {id:'gen_rest',title:'Rest & Recovery Day',day,date,type:'rest',sections:[{label:'A',name:'Active Recovery',reps:'Optional',desc:'Light walk, swim or easy cycle 20-30 min. HR < 130bpm. Movement is medicine.'},{label:'B',name:'Soft Tissue Work',reps:'10-15 min',desc:'Foam roll: glutes, quads, hamstrings, thoracic. 60s per area.'},{label:'C',name:'Breathwork',reps:'5 min',desc:'Box breathing: 4s inhale, 4s hold, 4s exhale, 4s hold. Activates parasympathetic.'}]}; }
+
+function _genGame(blk,wk,day,date) { return {id:'gen_game',title:'Game Day 🏉',day,date,type:'game',sections:[{label:'A',name:'Score',reps:'Log result',load:'BW',desc:'Record the final score.'},{label:'B',name:'Minutes Played',reps:'Log result',load:'BW',desc:'Minutes on field.'},{label:'C',name:'3 Positives',reps:'Reflect',load:'BW',desc:'What went well? Find 3 things.'},{label:'D',name:'1 Work On',reps:'Reflect',load:'BW',desc:'One clear area to improve.'}]}; }
+
+function _genPitstop(blk,wk,day,date) { return {id:'gen_pit',title:'The Performance Pit-Stop',day,date,type:'recovery',sections:[{label:'A',name:'Performance Pit-Stop Review',reps:'Weekly reflection',load:'BW',desc:'Review your week. Score sleep, stress, nutrition, training each out of 10.'},{label:'B',name:'Movement Quality Screen',reps:'10 min',load:'BW',desc:'Deep squat, hip hinge, shoulder reach, SL balance. Note any restrictions.'},{label:'C',name:'Plan Next Week',reps:'5 min',load:'BW',desc:'Review sessions, prep kit, plan meals. Preparation is performance.'}]}; }
+
+function _genSatNonGame(blk, wk, day, date, goal) {
+  const bi = (blk-1)%4, wi = wk-1;
+  const V = window._BLK_VARS;
+  const G = window._GOALS[goal] || window._GOALS.strength;
+
+  const sessions = {
+
+    hypertrophy: {
+      title: 'Competition '+blk+'.'+wk+': Saturday Hypertrophy Session',
+      type: 'strength',
+      sections: [
+        { label:'A', name:'Warm-Up', reps:'1 Round',
+          circuit:['Bike or Row — 5 min easy','Hip Hinge Drill — 10 Reps','Band Pull-Apart — 15 Reps','Goblet Squat — 10 Reps @ light'],
+          desc:'General warm-up before volume day. Get blood moving, not fatigued.' },
+        { label:'B', name:'B1/B2 Superset — Upper Volume', superset:true, exercises:[
+          { label:'B1', name:'Incline DB Press', reps:'4 x 10', load:'3 RIR', tempo:'2-0-1-0', rest:'75s',
+            desc:'Control descent, strong drive at top. Upper chest emphasis. Slightly above parallel incline.' },
+          { label:'B2', name:'Cable Row — Single Arm', reps:'4 x 10/side', load:'3 RIR', tempo:'2-0-1-1', rest:'75s',
+            desc:'Retract scapula first. Pull to hip. 1s hold. Full stretch on return. Unilateral balance.' }
+        ]},
+        { label:'C', name:'C1/C2 Superset — Lower Volume', superset:true, exercises:[
+          { label:'C1', name:'Leg Press', reps:'4 x 12', load:'3-4 RIR', tempo:'2-0-X-0', rest:'90s',
+            desc:'Full ROM. Feet hip-width. Drive through the whole foot. Quad & glute development.' },
+          { label:'C2', name:'Lying Hamstring Curl — Machine', reps:'4 x 12', load:'3-4 RIR', tempo:'2-1-1-0', rest:'90s',
+            desc:'1s pause at peak contraction. Slow eccentric. Hamstring hypertrophy.' }
+        ]},
+        { label:'D', name:'D1/D2 Superset — Arms & Shoulders', superset:true, exercises:[
+          { label:'D1', name:'Lateral Raise — DB', reps:'3 x 15', load:'Light — 4 RIR', tempo:'2-0-1-1', rest:'60s',
+            desc:'Slight bend at elbow. Raise to shoulder height. 1s hold at top. Controlled lower.' },
+          { label:'D2', name:'Hammer Curl — DB', reps:'3 x 12', load:'3-4 RIR', tempo:'2-0-1-0', rest:'60s',
+            desc:'Neutral grip, controlled movement. Brachialis and bicep development.' }
+        ]}
+      ]
+    },
+
+    strength: {
+      title: 'Competition '+blk+'.'+wk+': Saturday Strength & Carry Session',
+      type: 'strength',
+      sections: [
+        { label:'A', name:'Warm-Up', reps:'1 Round',
+          circuit:['Bike or Row — 5 min easy','Hip Hinge Drill — 10 Reps','Band Pull-Apart — 15 Reps','Goblet Squat — 10 Reps'],
+          desc:'Brief activation before the session. Not a workout — just get ready.' },
+        { label:'B', name:'Trap Bar Deadlift — Strength Supplemental', reps:'4 x 4', load:'75-80% 1RM — strong & crisp',
+          tempo:'2-0-X-1', rest:'180s',
+          desc:'Supplemental deadlift volume. Not a max effort — controlled and deliberate. Build the base under the main lifts.' },
+        { label:'C', name:'Loaded Carry Complex', reps:'4 Rounds',
+          circuit:['Farmer Carry — 40m (heavy as possible)','Suitcase Carry — 20m/side','Yoke Walk or Belt Squat Walk — 20m'],
+          desc:'3 min between rounds. Maximal grip and core strength under prolonged loading. Builds the connective tissue base.' },
+        { label:'D', name:'D1/D2 Superset — Accessory Strength', superset:true, exercises:[
+          { label:'D1', name:'Deficit Push-Up', reps:'3 x 8', load:'Add weight vest if easy', tempo:'3-1-X-0', rest:'90s',
+            desc:'Hands on plates or parallettes. Full depth. Pause at bottom. Chest & tricep strength.' },
+          { label:'D2', name:'Chest-Supported DB Row', reps:'3 x 8', load:'3 RIR', tempo:'2-0-1-2', rest:'90s',
+            desc:'Chest on incline bench. Heavy load, full scapular retraction. 2s hold at top. Horizontal pulling strength.' }
+        ]}
+      ]
+    },
+
+    power: {
+      title: 'Competition '+blk+'.'+wk+': Saturday Sprint & Power Extension',
+      type: 'speed',
+      sections: [
+        { label:'A', name:'Warm-Up', reps:'1 Round',
+          circuit:['Easy Jog — 5 min','High Knees — 2 x 20m','A-Skip — 2 x 20m','Butt Kicks — 2 x 20m','Ankle Pop — 2 x 20m'],
+          desc:'Sprint warm-up sequence. Build temp before high velocity work.' },
+        { label:'B', name:'Sprint Block — Extended Volume', reps:'6 x 40m',
+          load:'Bodyweight', tempo:'Max effort', rest:'Full (4-5 min)',
+          desc:'Extended sprint volume on non-game Saturday. Fly start — max velocity focus. Full recovery between reps. Stop if speed drops below 95%.' },
+        { label:'C', name:'Reactive Power Circuit', reps:'3 Rounds',
+          circuit:['Depth Jump to Sprint — 3 reps (jump then sprint 10m)','Lateral Bound to Sprint — 3 reps/side','Med Ball Scoop Toss — 5 reps','Standing Triple Jump — 3 reps'],
+          desc:'Combine reactive strength with acceleration. 3 min between rounds. Max intent every rep.' },
+        { label:'D', name:'Power-Endurance Finisher', reps:'4 Rounds',
+          circuit:['Sled Push — 20m (moderate load)','Rest 90s'],
+          desc:'Horizontal power under fatigue. Drive through full hip extension. Not a race — quality of mechanics throughout.' }
+      ]
+    },
+
+    peaking: {
+      title: 'Competition '+blk+'.'+wk+': Saturday — Competition Prep',
+      type: 'speed',
+      sections: [
+        { label:'A', name:'Movement Activation', reps:'1 Round',
+          circuit:['Hip 90/90 — 60s/side','Thoracic Rotation — 10 reps/side','Band Pull-Apart — 15 reps','Ankle Mob — 10 reps/side'],
+          desc:'Joint-by-joint activation. Not fatiguing — just opening up the body.' },
+        { label:'B', name:'CNS Activation — Contrast Method', reps:'3 Rounds',
+          circuit:['Heavy Squat or DL — 1 rep @ 90%+','Rest 3 min','Box Jump — 3 reps (max height)','Rest 3 min'],
+          desc:'Post-activation potentiation. Heavy lift primes CNS, then jump immediately after. Rest fully between pairs.' },
+        { label:'C', name:'Competition Visualisation & Strategy', reps:'15 min', load:'Mental prep',
+          desc:'Review game plan, positional responsibilities, set pieces. Mental rehearsal of key moments. Arrive mentally ready.' },
+        { label:'D', name:'Pit-Stop Preview', reps:'5 min', load:'Mental prep',
+          desc:'Final check-in on readiness: sleep score, soreness, motivation. Identify if you need to adjust intensity tomorrow.' }
+      ]
+    },
+
+    deload: {
+      title: 'Competition '+blk+'.'+wk+': Saturday — Active Recovery',
+      type: 'recovery',
+      sections: [
+        { label:'A', name:'Low Intensity Aerobic', reps:'30-40 min', load:'Easy',
+          desc:'Easy swim, bike or walk. HR below 130bpm. This is recovery — not a workout. Accelerate adaptation from the week.' },
+        { label:'B', name:'Full Body Stretch Flow', reps:'15 min',
+          circuit:['Pigeon Pose — 90s/side','Lying Glute Stretch — 60s/side','Pec Doorframe Stretch — 60s/side','Overhead Lat Stretch — 60s/side','Couch Stretch — 90s/side'],
+          desc:'Long-hold static stretching is appropriate today. Hold each position. Breathe deeply into the stretch.' },
+        { label:'C', name:'Contrast Therapy (if available)', reps:'3 Cycles',
+          circuit:['Cold (10-15°C) — 2 min','Hot (38-40°C) — 5 min','Cold again — 1 min'],
+          desc:'Hot-cold contrast accelerates recovery. End on cold. If no facility, cold shower for 3 min at end of shower.' }
+      ]
+    },
+
+    inseason: {
+      title: 'Competition '+blk+'.'+wk+': Saturday — Rugby Skills & Conditioning',
+      type: 'speed',
+      sections: [
+        { label:'A', name:'Warm-Up', reps:'1 Round',
+          circuit:['Jog — 5 min','Dynamic Stretch — hip, hamstring, shoulder','Passing Drill — 5 min (easy)'],
+          desc:'Transition from gym to field. Get ball in hand early.' },
+        { label:'B', name:'Skills Session — Core Rugby Actions', reps:'30 min',
+          circuit:['Passing — both hands, stationary then moving','Catching under pressure — high ball, chest pass','Contact — wrestle & breakdown technique','Kick-pass — short game skills'],
+          desc:'No-contact or controlled contact skills. Sharpen the actions you\'ll need in the game. Quality over intensity.' },
+        { label:'C', name:'Speed & Agility Conditioning', reps:'3 Rounds',
+          circuit:['Change of Direction — 5-10-5 drill x 3','Acceleration out of contact — 5m burst x 4','Defensive footwork — mirror drill x 4 pairs'],
+          desc:'Game-speed movement in short bursts. Full recovery between reps. Rehearse movement patterns, not volume.' },
+        { label:'D', name:'Game Day Preparation Review', reps:'10 min', load:'Mental prep',
+          desc:'Review tomorrow\'s opposition. Set piece calls, defensive patterns, your key roles. Prepare mentally for kick-off.' }
+      ]
+    }
+
+  };
+
+  const s = sessions[goal] || sessions.strength;
+  return {
+    id: 'gen_game',
+    title: s.title,
+    day, date,
+    type: s.type,
+    custom: true,
+    goalKey: goal,
+    sections: s.sections
+  };
+}
+
+function _genWeek(blk, wk, monDate, goal, isGameWeek) {
+  goal = goal || 'strength';
+  isGameWeek = isGameWeek !== false; // default true
+
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const fmtDate = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const dates = days.map((_,i) => { const d=new Date(monDate); d.setDate(monDate.getDate()+i); return fmtDate(d); });
+
+  return [
+    window._genUpper(blk, wk, days[0], dates[0], goal),
+    window._genLower(blk, wk, days[1], dates[1], goal),
+    window._genRest(blk, wk, days[2], dates[2]),
+    window._genAthlete(blk, wk, days[3], dates[3], goal),
+    isGameWeek
+      ? window._genPower(blk, wk, days[4], dates[4], goal)
+      : window._genPowerNonGame(blk, wk, days[4], dates[4], goal),
+    isGameWeek
+      ? window._genGame(blk, wk, days[5], dates[5])
+      : window._genSatNonGame(blk, wk, days[5], dates[5], goal),
+    window._genPitstop(blk, wk, days[6], dates[6])
+  ];
+}
+
+
+
+/* ============================================================
+   AUTO-GENERATE MODAL
+   ============================================================ */
+
+function _updatePreview() {
+  // Run original preview first
+  _origUpdatePreview();
+
+  // Now patch the schedule section in the preview to show correct Fri/Sat labels
+  const isGame = _isGameWeek !== false;
+  const el = document.getElementById('agPreview');
+  if (!el) return;
+
+  // Find all prev-day divs and update Friday (index 4) and Saturday (index 5)
+  const dayDivs = el.querySelectorAll('.prev-day, [style*="prev-day"]');
+  // Since we built schedule with inline HTML, patch via innerHTML replacement
+  const goalKey = (document.getElementById('agGoal') || {}).value || 'strength';
+  const G = GOALS[goalKey] || GOALS.strength;
+
+  // Rebuild just the schedule section's day labels
+  // Find the schedule div by its teal border
+  const schedDiv = Array.from(el.querySelectorAll('div')).find(d =>
+    d.innerHTML && d.innerHTML.includes('SCHEDULE')
+  );
+  if (!schedDiv) return;
+
+  const dotColors = ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#7b2d8b','#4caf50'];
+
+  const blkStr  = (document.getElementById('agBlock') || {}).value || '1.4';
+  const dateVal = (document.getElementById('agDate') || {}).value || '';
+  let mon = null;
+  if (dateVal) {
+    mon = new Date(dateVal + 'T00:00:00');
+    if (mon.getDay() !== 1) { const diff=(1-mon.getDay()+7)%7; mon.setDate(mon.getDate()+diff); }
+  }
+  const fmtD = (d, offset) => {
+    if (!d) return '—';
+    const nd = new Date(d.getTime() + offset*86400000);
+    return nd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  };
+
+  const dayTitles = [
+    'Upper Strength & Power',
+    'Impulse (Lower)',
+    'Rest & Recovery',
+    'Athlete Day',
+    isGame ? 'Impulse (Power)' : `Impulse Power + Robustness`,
+    isGame ? 'Game Day 🏉' : `${G.emoji} ${G.label} Session`,
+    'Performance Pit-Stop'
+  ];
+  const dayColors = isGame
+    ? ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#7b2d8b','#4caf50']
+    : ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#2ec4b6','#4caf50'];
+
+  const dayRows = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #1a1a2e;${(i===4||i===5)&&!isGame?'background:rgba(46,196,182,0.05);':''}" >
+      <div style="width:7px;height:7px;border-radius:50%;background:${dayColors[i]};flex-shrink:0;"></div>
+      <div style="font-size:.72rem;color:#666;width:75px;flex-shrink:0;">${fmtD(mon,i)}</div>
+      <div style="font-size:.72rem;color:${(i===4||i===5)&&!isGame?'#2ec4b6':'#ccc'};${(i===4||i===5)&&!isGame?'font-weight:600;':''}">${dayTitles[i]}${(i===4||i===5)&&!isGame?' ✦':''}</div>
+    </div>`).join('');
+
+  schedDiv.innerHTML = `
+    <div style="color:#2ec4b6;font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px;">
+      SCHEDULE ${isGame ? '🏉 GAME WEEK' : '🏋️ NO GAME — EXTRA SESSIONS'}
+    </div>
+    ${dayRows}
+    ${!isGame ? '<div style="font-size:.68rem;color:#2ec4b6;margin-top:6px;font-style:italic;">✦ Extended sessions on non-game Fri & Sat</div>' : ''}
+  `;
+}
+
+function setGameWeek(isGame) {
+  _isGameWeek = isGame;
+  const btnGame = document.getElementById('btnGameWeek');
+  const btnNo = document.getElementById('btnNoGame');
+  const hint = document.getElementById('agGameHint');
+
+  if (isGame) {
+    btnGame.style.cssText = 'flex:1;height:44px;border-radius:10px;border:2px solid #7b2d8b;background:#7b2d8b;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;';
+    btnNo.style.cssText = 'flex:1;height:44px;border-radius:10px;border:2px solid #e0e0e0;background:#f5f5f5;color:#555;font-size:.82rem;font-weight:700;cursor:pointer;';
+    hint.textContent = 'Fri = Impulse Power · Sat = Game Day logging';
+  } else {
+    btnGame.style.cssText = 'flex:1;height:44px;border-radius:10px;border:2px solid #e0e0e0;background:#f5f5f5;color:#555;font-size:.82rem;font-weight:700;cursor:pointer;';
+    btnNo.style.cssText = 'flex:1;height:44px;border-radius:10px;border:2px solid #2ec4b6;background:#2ec4b6;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;';
+    hint.textContent = 'Fri = Impulse Power + Robustness · Sat = Goal-specific training session';
+  }
+  _updatePreview();
+}
+
+function openAG() {
+  _updatePreview();
+  document.getElementById('agMod').classList.add('open');
+}
+
+function generateWeek() {
+  const blkStr   = document.getElementById('agBlock').value;
+  const wk       = parseInt(document.getElementById('agWeek').value) || 1;
+  const dateVal  = document.getElementById('agDate').value;
+  const goalKey  = (document.getElementById('agGoal') || {}).value || 'strength';
+  const isGame   = _isGameWeek !== false;
+
+  if (!dateVal) { _toast('Please select a start date', '#e63946'); return; }
+
+  const mon = new Date(dateVal + 'T00:00:00');
+  if (mon.getDay() !== 1) { const diff=(1-mon.getDay()+7)%7; mon.setDate(mon.getDate()+diff); }
+
+  const blkIdx = _getBlkIdx(blkStr);
+  const G = GOALS[goalKey] || GOALS.strength;
+
+  const workouts = _genWeek(blkIdx+1, wk, mon, goalKey, isGame);
+  const ts = Date.now();
+  workouts.forEach(w => {
+    w.id = w.id + '_' + ts;
+    w.custom = true;
+    w.blockLabel = blkStr;
+    w.goalKey = goalKey;
+    w.gameWeek = isGame;
+    w.title = w.title.replace(/Competition \d+(?:\.\d+)?/, 'Competition ' + blkStr);
+  });
+
+  let existing = []; try { existing = JSON.parse(localStorage.getItem('jh_cw3')||'[]'); } catch(e) {}
+  existing.push(...workouts);
+  localStorage.setItem('jh_cw3', JSON.stringify(existing));
+  workouts.forEach(w => _allW.push(w));
+
+  document.getElementById('agMod').classList.remove('open');
+  _act = workouts[0].id;
+  _render();
+
+  const fmtMon = mon.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const fmtSun = new Date(mon.getTime()+6*86400000).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const label = isGame ? '🏉 Game Week' : '🏋️ No Game';
+  _toast(`${G.emoji} ${G.label} · ${label} · Block ${blkStr} W${wk} · ${fmtMon}–${fmtSun}`);
+}
+
+
+
+/* ============================================================
+   INITIALISATION — runs on page load
+   ============================================================ */
+
+function _initModal() {
+  // Populate block dropdown
+  const blocks = ['1.4','1.5','1.6','2.1','2.2','2.3','2.4','2.5','2.6','3.1','3.2','3.3','3.4'];
+  const blkLabels = {'1.4':'1.4 (Current)','1.5':'1.5','1.6':'1.6','2.1':'2.1 (Pre-Season)','2.2':'2.2','2.3':'2.3','2.4':'2.4','2.5':'2.5','2.6':'2.6','3.1':'3.1 (In-Season)','3.2':'3.2','3.3':'3.3','3.4':'3.4'};
+  const agBlock = document.getElementById('agBlock');
+  agBlock.innerHTML = blocks.map(b=>`<option value="${b}">${blkLabels[b]||b}</option>`).join('');
+
+  // Populate goal dropdown
+  const agGoal = document.getElementById('agGoal');
+  agGoal.innerHTML = Object.entries(GOALS).map(([k,g])=>`<option value="${k}">${g.emoji} ${g.label}</option>`).join('');
+  agGoal.value = 'strength';
+  document.getElementById('agGoalHint').textContent = GOALS['strength'].desc;
+  agGoal.addEventListener('change', () => {
+    const G = GOALS[agGoal.value];
+    document.getElementById('agGoalHint').textContent = G ? G.desc : '';
+    _updatePreview();
+  });
+
+  // Default date to next Monday
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const daysUntilMon = dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7 || 7;
+  const nextMon = new Date(today);
+  nextMon.setDate(today.getDate() + daysUntilMon);
+  document.getElementById('agDate').value = nextMon.toISOString().split('T')[0];
+
+  // Attach change listeners
+  ['agBlock','agWeek','agDate','agGoal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', _updatePreview);
+  });
+
+  _updatePreview();
+}
+
+// Start the app
+document.addEventListener('DOMContentLoaded', () => {
+  _initModal();
+  _render();
+});
+
+</script>
+</body>
+</html>
