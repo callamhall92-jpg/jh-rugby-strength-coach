@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>JH Rugby Strength Coach</title>
 <!-- ============================================================
-     JH RUGBY STRENGTH COACH — PWA
+     JH RUGBY STRENGTH COACH — PWAh
      Version: 1.0.0 | Built: 2026-05-01
      
      EDITING GUIDE:
@@ -1224,70 +1224,110 @@ function _genWeek(blk, wk, monDate, goal, isGameWeek) {
    ============================================================ */
 
 function _updatePreview() {
-  // Run original preview first
-  _origUpdatePreview();
+    const el = document.getElementById('agPreview');
+       if (!el) return;
 
-  // Now patch the schedule section in the preview to show correct Fri/Sat labels
-  const isGame = _isGameWeek !== false;
-  const el = document.getElementById('agPreview');
-  if (!el) return;
+       const blkStr  = (document.getElementById('agBlock') || {}).value || '1.4';
+       const wk      = parseInt((document.getElementById('agWeek') || {}).value) || 1;
+       const goalKey = (document.getElementById('agGoal') || {}).value || 'strength';
+       const dateVal = (document.getElementById('agDate') || {}).value || '';
+       const isGame  = _isGameWeek !== false;
 
-  // Find all prev-day divs and update Friday (index 4) and Saturday (index 5)
-  const dayDivs = el.querySelectorAll('.prev-day, [style*="prev-day"]');
-  // Since we built schedule with inline HTML, patch via innerHTML replacement
-  const goalKey = (document.getElementById('agGoal') || {}).value || 'strength';
-  const G = GOALS[goalKey] || GOALS.strength;
+       const G = GOALS[goalKey] || GOALS.strength;
+       const bi = (_getBlkIdx(blkStr)) % 4;
+       const V = BLK_VARS[bi] || BLK_VARS[0];
 
-  // Rebuild just the schedule section's day labels
-  // Find the schedule div by its teal border
-  const schedDiv = Array.from(el.querySelectorAll('div')).find(d =>
-    d.innerHTML && d.innerHTML.includes('SCHEDULE')
-  );
-  if (!schedDiv) return;
+       const wkIdx = Math.min(wk - 1, 3);
+       const load = (G.mainLift && G.mainLift.load) ? (G.mainLift.load[wkIdx] || G.mainLift.load[0]) : '75%';
+       const sets = (G.mainLift && G.mainLift.sets) ? G.mainLift.sets : '5 x 3';
 
-  const dotColors = ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#7b2d8b','#4caf50'];
+       let mon = null;
+       if (dateVal) {
+         mon = new Date(dateVal + 'T00:00:00');
+         if (mon.getDay() !== 1) { const diff=(1-mon.getDay()+7)%7; mon.setDate(mon.getDate()+diff); }
+       }
+       const fmtD = (d, offset) => {
+         if (!d) return '-';
+         const nd = new Date(d.getTime() + offset*86400000);
+         return nd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+       };
 
-  const blkStr  = (document.getElementById('agBlock') || {}).value || '1.4';
-  const dateVal = (document.getElementById('agDate') || {}).value || '';
-  let mon = null;
-  if (dateVal) {
-    mon = new Date(dateVal + 'T00:00:00');
-    if (mon.getDay() !== 1) { const diff=(1-mon.getDay()+7)%7; mon.setDate(mon.getDate()+diff); }
-  }
-  const fmtD = (d, offset) => {
-    if (!d) return '—';
-    const nd = new Date(d.getTime() + offset*86400000);
-    return nd.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-  };
+       const dayTitles = [
+         'Upper Strength & Power',
+         'Impulse (Lower)',
+         'Rest & Recovery',
+         'Athlete Day',
+         isGame ? 'Impulse (Power)' : 'Impulse Power + Robustness',
+         isGame ? 'Game Day' : (G.emoji + ' ' + G.label + ' Session'),
+         'Performance Pit-Stop'
+       ];
+       const dayColors = isGame
+         ? ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#7b2d8b','#4caf50']
+         : ['#e63946','#4361ee','#555','#2ec4b6','#2ec4b6','#2ec4b6','#4caf50'];
 
-  const dayTitles = [
-    'Upper Strength & Power',
-    'Impulse (Lower)',
-    'Rest & Recovery',
-    'Athlete Day',
-    isGame ? 'Impulse (Power)' : `Impulse Power + Robustness`,
-    isGame ? 'Game Day 🏉' : `${G.emoji} ${G.label} Session`,
-    'Performance Pit-Stop'
-  ];
-  const dayColors = isGame
-    ? ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#7b2d8b','#4caf50']
-    : ['#e63946','#4361ee','#555','#2ec4b6','#f4a261','#2ec4b6','#4caf50'];
+       const days7 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+       let dayRowsHtml = '';
+       for (let i=0;i<7;i++) {
+         const highlight = (i===4||i===5)&&!isGame;
+         dayRowsHtml += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #1a1a2e;' + (highlight ? 'background:rgba(46,196,182,0.05);' : '') + '">';
+         dayRowsHtml += '<div style="width:7px;height:7px;border-radius:50%;background:' + dayColors[i] + ';flex-shrink:0;"></div>';
+         dayRowsHtml += '<div style="font-size:.72rem;color:#666;width:75px;flex-shrink:0;">' + fmtD(mon,i) + '</div>';
+         dayRowsHtml += '<div style="font-size:.72rem;color:' + (highlight?'#2ec4b6':'#ccc') + ';' + (highlight?'font-weight:600;':'') + '">' + dayTitles[i] + (highlight?' *':'') + '</div>';
+         dayRowsHtml += '</div>';
+     }
 
-  const dayRows = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #1a1a2e;${(i===4||i===5)&&!isGame?'background:rgba(46,196,182,0.05);':''}" >
-      <div style="width:7px;height:7px;border-radius:50%;background:${dayColors[i]};flex-shrink:0;"></div>
-      <div style="font-size:.72rem;color:#666;width:75px;flex-shrink:0;">${fmtD(mon,i)}</div>
-      <div style="font-size:.72rem;color:${(i===4||i===5)&&!isGame?'#2ec4b6':'#ccc'};${(i===4||i===5)&&!isGame?'font-weight:600;':''}">${dayTitles[i]}${(i===4||i===5)&&!isGame?' ✦':''}</div>
-    </div>`).join('');
+       const accSets = G.accessory ? (G.accessory.sets + ' x ' + G.accessory.reps) : '3 x 8';
+       const clnSets = G.clean ? (G.clean.sets + ' x ' + G.clean.reps) : '5 x 3';
+       let setsHtml = '';
+       [['Main Lift', sets, load],['Accessory', accSets, 'Moderate'],['Clean/Power', clnSets, 'Explosive']].forEach(function(row) {
+         setsHtml += '<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px solid #1a1a2e;">';
+         setsHtml += '<div style="font-size:.72rem;color:#aaa;flex:1;">' + row[0] + '</div>';
+         setsHtml += '<div style="font-size:.72rem;color:#fff;font-weight:600;width:60px;">' + row[1] + '</div>';
+         setsHtml += '<div style="font-size:.72rem;color:#f4a261;width:60px;">' + row[2] + '</div>';
+         setsHtml += '</div>';
+     });
 
-  schedDiv.innerHTML = `
-    <div style="color:#2ec4b6;font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px;">
-      SCHEDULE ${isGame ? '🏉 GAME WEEK' : '🏋️ NO GAME — EXTRA SESSIONS'}
-    </div>
-    ${dayRows}
-    ${!isGame ? '<div style="font-size:.68rem;color:#2ec4b6;margin-top:6px;font-style:italic;">✦ Extended sessions on non-game Fri & Sat</div>' : ''}
-  `;
-}
+       const exData = [
+         ['Squat', V.squat || 'Back Squat'],
+         ['Clean', V.clean || 'Power Clean'],
+         ['Bench', V.bench || 'Bench Press'],
+         ['Hinge', V.trap || 'Trap Bar DL'],
+         ['Single Leg', V.singleLeg || 'Reverse Lunge'],
+         ['Ham Curl', V.hamCurl || 'Glider Curl']
+       ];
+       let exHtml = '';
+       exData.forEach(function(e) {
+         exHtml += '<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px solid #1a1a2e;">';
+         exHtml += '<div style="font-size:.72rem;color:#888;width:70px;">' + e[0] + '</div>';
+         exHtml += '<div style="font-size:.72rem;color:#fff;">' + e[1] + '</div>';
+         exHtml += '</div>';
+     });
+
+       const color1 = G.color || '#c0392b';
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       const color2 = G.color2 || '#e74c3c';
+
+       el.innerHTML =
+         '<div style="background:linear-gradient(135deg,' + color1 + ',' + color2 + ');border-radius:10px;padding:12px 14px;margin-bottom:10px;">' +
+                '<div style="font-size:1.3rem;">' + G.emoji + '</div>' +
+                '<div style="font-size:.95rem;font-weight:800;color:#fff;">' + G.label + '</div>' +
+         '<div style="font-size:.72rem;color:rgba(255,255,255,.85);margin-top:2px;">' + G.desc + '</div>' +
+         '</div>' +
+         '<div style="background:#1e1e2e;border-radius:10px;padding:12px 14px;margin-bottom:10px;">' +
+         '<div style="color:#f4a261;font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px;">BLOCK ' + blkStr + ' - WEEK ' + wk + ' - SETS & REPS</div>' +
+         '<div style="font-size:.72rem;color:#888;margin-bottom:6px;">Same exercises all 4 weeks. Variations rotate each new block.</div>' +
+         setsHtml +
+         '<div style="margin-top:8px;font-size:.72rem;color:#666;">Week loading: <span style="color:#f4a261;font-weight:700;">' + load + '</span></div>' +
+         '</div>' +
+         '<div style="background:#1e1e2e;border-radius:10px;padding:12px 14px;margin-bottom:10px;">' +
+         '<div style="color:#e63946;font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px;">KEY EXERCISES THIS BLOCK</div>' +
+         exHtml +
+         '</div>' +
+         '<div style="background:#1e1e2e;border-radius:10px;padding:12px 14px;">' +
+         '<div style="color:#2ec4b6;font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px;">SCHEDULE ' + (isGame ? 'GAME WEEK' : 'NO GAME - EXTRA SESSIONS') + '</div>' +
+         dayRowsHtml +
+         (!isGame ? '<div style="font-size:.68rem;color:#2ec4b6;margin-top:6px;font-style:italic;">* Extended sessions on non-game Fri & Sat</div>' : '') +
+         '</div>';
+     }
 
 function setGameWeek(isGame) {
   _isGameWeek = isGame;
