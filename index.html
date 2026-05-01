@@ -1235,7 +1235,7 @@ function _updatePreview() {
 
        const G = GOALS[goalKey] || GOALS.strength;
        const bi = (_getBlkIdx(blkStr)) % 4;
-       const V = BLK_VARS[bi] || BLK_VARS[0];
+     
 
        const wkIdx = Math.min(wk - 1, 3);
        const load = (G.mainLift && G.mainLift.load) ? (G.mainLift.load[wkIdx] || G.mainLift.load[0]) : '75%';
@@ -1288,12 +1288,12 @@ function _updatePreview() {
      });
 
        const exData = [
-         ['Squat', V.squat || 'Back Squat'],
-         ['Clean', V.clean || 'Power Clean'],
-         ['Bench', V.bench || 'Bench Press'],
-         ['Hinge', V.trap || 'Trap Bar DL'],
-         ['Single Leg', V.singleLeg || 'Reverse Lunge'],
-         ['Ham Curl', V.hamCurl || 'Glider Curl']
+         ['Squat', (BLK_VARS.squat&&BLK_VARS.squat[bi]) || 'Back Squat'],
+         ['Clean', (BLK_VARS.clean&&BLK_VARS.clean[bi]) || 'Power Clean'],
+         ['Bench', (BLK_VARS.bench&&BLK_VARS.bench[bi]) || 'Bench Press'],
+         ['Hinge', (BLK_VARS.trap&&BLK_VARS.trap[bi]) || 'Trap Bar DL'],
+         ['Single Leg', (BLK_VARS.singleLeg&&BLK_VARS.singleLeg[bi]) || 'Reverse Lunge'],
+         ['Ham Curl', (BLK_VARS.hamCurl&&BLK_VARS.hamCurl[bi]) || 'Glider Curl']
        ];
        let exHtml = '';
        exData.forEach(function(e) {
